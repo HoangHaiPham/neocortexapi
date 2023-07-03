@@ -56,7 +56,7 @@ namespace Invariant.Entities
         /// Create a Dataset from a path to the training folder
         /// </summary>
         /// <param name="pathToTrainingFolder">path to the training folder</param>
-        public DataSet(string pathToTrainingFolder)
+        public DataSet(string pathToTrainingFolder, bool frameForTraining = false)
         {
             random = new Random(42);
             Labels = new List<string>();
@@ -68,9 +68,22 @@ namespace Invariant.Entities
             foreach (var classFolder in Directory.GetDirectories(pathToTrainingFolder))
             {
                 string label = Path.GetFileName(classFolder);
-                foreach (var imagePath in Directory.GetFiles(classFolder))
+                if (frameForTraining)
                 {
-                    Images.Add(new Image(imagePath, label));
+                    foreach (var imageFolder in Directory.GetDirectories(classFolder))
+                    {
+                        foreach (var framePath in Directory.GetFiles(imageFolder))
+                        {
+                            Images.Add(new Image(framePath, label));
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var imagePath in Directory.GetFiles(classFolder))
+                    {
+                        Images.Add(new Image(imagePath, label));
+                    }
                 }
             }
         }

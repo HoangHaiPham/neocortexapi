@@ -105,16 +105,16 @@ namespace InvariantLearning
 
             // Training In New Born State
             int cycle = 0;
-            int maxCycle = 500;
+            int maxCycle = 100;
+            Stopwatch sw = Stopwatch.StartNew();
+            sw.Start();
             while (cycle < maxCycle)
             {
-                Debug.Write($"Cycle {cycle}: ");
+                Debug.WriteLine($"-------------- Newborn Cycle {cycle} ---------------");
                 foreach (var sample in trainingDataSet.Images)
                 {
-                    Debug.Write(".");
                     cortexLayer.Compute(sample.ImagePath, true);
                 }
-                Debug.Write("\n");
 
                 if (this.isInStableState)
                 {
@@ -122,6 +122,9 @@ namespace InvariantLearning
                 }
                 cycle++;
             }
+            sw.Stop();
+            var elapsedTime = sw.Elapsed;
+            Debug.WriteLine($"-------------- Training Time: {elapsedTime} ---------------");
             Console.WriteLine("Learning Unit reach stable state in newborn learning");
         }
 

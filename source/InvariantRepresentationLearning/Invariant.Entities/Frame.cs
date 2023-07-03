@@ -135,17 +135,37 @@
         {
             List<Frame> result = new List<Frame>();
 
+            //var xIndicies = GetDivisionIndexByPixel(0, imgWidth - frameWidth);
+            //var yIndicies = GetDivisionIndexByPixel(0, imgHeight - frameHeight);
+            //for (int i = 0; i < xIndicies.Count; i+=NoPixels)
+            //{
+            //    if (i > xIndicies.Count)
+            //    {
+            //        continue;
+            //    }
+            //    for (int j = 0; j < yIndicies.Count; j+=NoPixels)
+            //    {
+            //        if (j > yIndicies.Count)
+            //        {
+            //            continue;
+            //        }
+            //        result.Add(new Frame(xIndicies[i], yIndicies[j], xIndicies[i] + frameWidth - 1, yIndicies[j] + frameHeight - 1));
+            //    }
+            //}
+            //return result;
+
+
             var xIndicies = GetDivisionIndexByPixel(0, imgWidth - frameWidth);
             var yIndicies = GetDivisionIndexByPixel(0, imgHeight - frameHeight);
-            for (int i = 0; i < xIndicies.Count; i+=NoPixels)
+            for (int i = 0; i < yIndicies.Count; i += NoPixels)
             {
-                if (i > xIndicies.Count)
+                if (i > yIndicies.Count)
                 {
                     continue;
                 }
-                for (int j = 0; j < yIndicies.Count; j+=NoPixels)
+                for (int j = 0; j < xIndicies.Count; j += NoPixels)
                 {
-                    if (j > yIndicies.Count)
+                    if (j > xIndicies.Count)
                     {
                         continue;
                     }

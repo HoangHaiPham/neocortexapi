@@ -5,6 +5,7 @@ using InvariantLearning;
 using Invariant.Entities;
 using System.Collections.Concurrent;
 using NeoCortexApi.Encoders;
+using System.Threading;
 
 namespace InvariantLearning
 {
@@ -12,14 +13,14 @@ namespace InvariantLearning
     {
         public static void Main()
         {
+            // OLD
             string experimentTime = DateTime.UtcNow.ToLongDateString().ToString().Replace(',',' ') +" "+DateTime.UtcNow.ToLongTimeString().ToString().Replace(':','_');
-            //ExperimentPredictingWithFrameGrid();
-            //ExperimentNormalImageClassification();
-            //LocaDimensionTest();
-            ExperimentEvaluatateImageClassification($"EvaluateImageClassification {experimentTime}");
+            // ExperimentEvaluatateImageClassification($"EvaluateImageClassification {experimentTime}");
+
+            //string experimentTime = DateTime.UtcNow.ToShortDateString().ToString().Replace('/', '-');
             // Invariant Learning Experiment
-            //InvariantRepresentation($"HtmInvariantLearning {experimentTime}");
-            //SPCapacityTest();
+            InvariantRepresentation($"HtmInvariantLearning {experimentTime}");
+
         }
 
         /// <summary>
@@ -27,6 +28,336 @@ namespace InvariantLearning
         /// </summary>
         /// <param name="experimentFolder"></param>
         private static void InvariantRepresentation(string experimentFolder)
+        {
+            Utility.CreateFolderIfNotExist(experimentFolder);
+
+            // Get the folder of MNIST archives tar.gz files.
+            string sourceMNIST = Path.Combine(experimentFolder, "MnistSource");
+            Utility.CreateFolderIfNotExist(sourceMNIST);
+            Mnist.DataGen("MnistDataset", sourceMNIST, 10);
+
+            // generate 32x32 source MNISTDataSet
+            int width = 32; int height = 32;
+            int frameWidth = 16; int frameHeight = 16;
+            int pixelShifted = 16;
+
+            DataSet sourceSet = new DataSet(sourceMNIST);
+        
+            DataSet sourceSet_32x32 = DataSet.ScaleSet(experimentFolder, width, height, sourceSet , "sourceSet");
+            DataSet testSet_32x32 = sourceSet_32x32.GetTestData(20);
+
+            DataSet scaledTestSet = DataSet.CreateTestSet(testSet_32x32, 100, 100, Path.Combine(experimentFolder,"testSet_100x100"));
+
+            // write extracted/filtered frame from 32x32 dataset into 4x4 for SP to learn all pattern
+            var listOfFrame = Frame.GetConvFramesbyPixel(32, 32, frameWidth, frameHeight, pixelShifted);
+            // string extractedFrameFolder = Path.Combine(experimentFolder, "extractedFrame");
+            // string extractedFrameFolderBinarized = Path.Combine(experimentFolder, "extractedFrameBinarized");
+            string extractedFrameFolder = "unknow";
+            string extractedFrameFolderBinarized = "unknow";
+
+            int index = 0;
+            List<string> frameDensityList = new List<string>();
+            foreach (var image in sourceSet_32x32.Images)
+            {
+
+                extractedFrameFolder = Path.Combine(experimentFolder, "TrainingExtractedFrame", $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}");
+                extractedFrameFolderBinarized = Path.Combine(experimentFolder, "TrainingExtractedFrameBinarized", $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}");
+                
+                // Utility.CreateFolderIfNotExist(Path.Combine(extractedFrameFolder, $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}"));
+                // Utility.CreateFolderIfNotExist(Path.Combine(extractedFrameFolderBinarized, $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}"));
+
+                Utility.CreateFolderIfNotExist(extractedFrameFolder);
+                Utility.CreateFolderIfNotExist(extractedFrameFolderBinarized);
+
+                foreach (var frame in listOfFrame)
+                {
+                    if (image.IsRegionInDensityRange(frame, 10, 100))
+                    {
+                        if (!DataSet.ExistImageInDataSet(image, extractedFrameFolder, frame))
+                        {
+                            string savePath = Path.Combine(extractedFrameFolder, $"{frame.tlX}_{frame.tlY}_{frame.brX}_{frame.brY}.png");
+                            string savePathBinarized = Path.Combine(extractedFrameFolderBinarized, $"{frame.tlX}_{frame.tlY}_{frame.brX}_{frame.brY}_binarize.png");
+                            image.SaveTo(savePath, frame, true);
+                            image.SaveTo(savePathBinarized, frame);
+                            frameDensityList.Add($"pattern {index}, Pixel Density {image.FrameDensity(frame, 255 / 2) * 100}");
+                            index += 1;
+                        }
+                    }
+                }
+            }
+            File.WriteAllLines(Path.Combine(experimentFolder, "TrainingExtractedFrame", "PixelDensity.txt"), frameDensityList.ToArray());
+            DataSet trainingExtractedFrameSet = new DataSet(Path.Combine(experimentFolder, "TrainingExtractedFrameBinarized"), true);
+
+            // Learning the filtered frame set with SP
+            LearningUnit spLayer1 = new LearningUnit(32,32,2048,experimentFolder);
+            spLayer1.TrainingNewbornCycle(trainingExtractedFrameSet);
+            // spLayer1.TrainingNormal(extractedFrameSet, 1);
+
+            string extractedImageSource = Path.Combine(experimentFolder, "extractedSet");
+            Utility.CreateFolderIfNotExist(extractedImageSource);
+
+            // Saving representation/semantic array with its label in files
+
+            // NEED TO MODIFY HERE TO TRAINING FRAM, NOT TESTSET, FOLDER STRUCTURE
+            Dictionary<string, List<int[]>> lib = new Dictionary<string, List<int[]>>();
+            foreach (var image in sourceSet_32x32.Images)
+            {
+                string extractedFrameFolderofImage = Path.Combine(extractedImageSource, $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}");
+                Utility.CreateFolderIfNotExist(extractedFrameFolderofImage);
+                if (!lib.ContainsKey(image.Label))
+                {
+                    lib.Add(image.Label, new List<int[]>());
+                }
+                int[] current = new int[spLayer1.columnDim];
+                foreach (var frame in listOfFrame)
+                {
+                    if (image.IsRegionInDensityRange(frame, 10, 100))
+                    {
+                        string frameImage = Path.Combine(extractedFrameFolderofImage, $"{frame.tlX}-{frame.tlY}_{frame.brX}-{frame.brY}.png");
+                        image.SaveTo(frameImage, frame, true);
+                        int[] trainFrameSDR = spLayer1.Predict(frameImage);
+                        //current = Utility.AddArray(current, trainFrameSDR);
+
+                        lib[image.Label].Add(trainFrameSDR);
+                    }
+                }
+                // from Toan -> build semantic array
+                //lib[image.Label].Add(current);
+            }
+
+            Console.WriteLine("test");
+
+            // Using trained SP to create semantic arrays for label 
+            //Dictionary<string, List<int[]>> semanticArrayTrain = new Dictionary<string, List<int[]>>();
+            //foreach (var l in lib)
+            //{
+            //    var label = l.Key;
+            //    if (!semanticArrayTrain.ContainsKey(label))
+            //    {
+            //        semanticArrayTrain.Add(label, new List<int[]>());
+            //    }
+            //    int[] sdr_sum = new int[spLayer1.columnDim];
+            //    foreach (int[] v in l.Value)
+            //    {
+            //        sdr_sum = Utility.AddArray(sdr_sum, v);
+            //    }
+            //    semanticArrayTrain[label].Add(sdr_sum);
+            //}
+
+
+            foreach (var a in lib)
+            {
+                var temp_label = a.Key;
+                using (StreamWriter sw = new StreamWriter(Path.Combine(extractedImageSource, $"{temp_label}.txt")))
+                {
+                    foreach (var s in a.Value)
+                    {
+                        sw.WriteLine(string.Join(',', s) + "\n");
+                    }
+                    // var curKey = semanticArrayTrain.FirstOrDefault(x => x.Key == temp_label);
+                    //foreach (var smA in curKey.Value)
+                    //{
+                    //    sw.WriteLine(string.Join(',', smA) + "\n");
+                    //}
+                }
+            }
+
+
+            // Testing section, calculate accuracy
+            string testFolder = Path.Combine(experimentFolder, "Test");
+            Utility.CreateFolderIfNotExist(testFolder);
+            int match = 0;
+            listOfFrame = Frame.GetConvFramesbyPixel(32, 32, frameWidth, frameHeight, pixelShifted);
+
+            //Trace.Listeners.Add(new TextWriterTraceListener("new_16x16_train100_test20_cycle3.log"));
+            //Trace.AutoFlush = true;
+            //Trace.Indent();
+            //Trace.WriteLine("============= Entering Main =============");
+
+            foreach (var testImage in testSet_32x32.Images)
+            {
+                string testImageFolder = Path.Combine(testFolder, $"{testImage.Label}", $"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}");
+                Utility.CreateFolderIfNotExist(testImageFolder);
+                testImage.SaveTo(Path.Combine(testImageFolder, $"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}_origin.png"));
+
+                int[] current = new int[spLayer1.columnDim];
+
+
+                var testActualLabel = testImage.Label;
+
+                TextWriterTraceListener myTextListener = new TextWriterTraceListener(Path.Combine(testImageFolder, $"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}_Frame_Prediction_16x16_testInTrain_100.log"));
+                Trace.Listeners.Add(myTextListener);
+                //Trace.AutoFlush = true;
+                //Trace.Indent();
+                Trace.WriteLine($"Actual label: {testActualLabel}");
+                Trace.WriteLine($"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}");
+                Console.WriteLine($"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}");
+
+                foreach (var frame in listOfFrame)
+                {
+                    string frameImage = Path.Combine(testImageFolder, $"{frame.tlX}-{frame.tlY}_{frame.brX}-{frame.brY}.png");
+                    testImage.SaveTo(frameImage, frame, true);
+
+                    Console.WriteLine($"Frame: {frame.tlX}-{frame.tlY}_{frame.brX}-{frame.brY}");
+                    Trace.WriteLine($"Frame: {frame.tlX}-{frame.tlY}_{frame.brX}-{frame.brY}");
+
+                    if (testImage.IsRegionInDensityRange(frame, 10, 100))
+                    {
+                        // get SDR of each frame
+                        int[] testFrameSDR = spLayer1.Predict(frameImage);
+
+                        // compare similarity for predicting each frame
+                        string testPredictedLabel = "unknow";
+                        List<Dictionary<string, string>> testSimilarityListFrame = new List<Dictionary<string, string>>();
+                        foreach (var digitClass in lib)
+                        {
+                            string currentLabel = digitClass.Key;
+                            foreach (var entry in digitClass.Value)
+                            {
+                                double arrayGeometricDistance = Utility.CalArrayUnion(entry, testFrameSDR);
+                                testSimilarityListFrame.Add(new Dictionary<string, string>()
+                                {
+                                    {"Label", currentLabel},
+                                    {"Value", Convert.ToString(arrayGeometricDistance)}
+                                });
+                            }
+                        }
+
+                        // get top 3 lowest arrayGeometricDistance
+                        // sorted from lowest arrayGeometricDistance to highest
+                        int topN_test = 3;
+                        var topN_testSimilarity = testSimilarityListFrame.OrderBy(dict => Convert.ToDouble(dict["Value"])).ThenByDescending(dict => dict["Label"]).Take(topN_test);
+
+                        // get # of times each lable is predicted
+                        Dictionary<string, double> testCountFreq = new Dictionary<string, double>();
+                        foreach (var s in topN_testSimilarity)
+                        {
+                            if (!testCountFreq.ContainsKey(s["Label"]))
+                            {
+                                testCountFreq.Add(s["Label"], 0);
+                            }
+                            testCountFreq[s["Label"]] += 1;
+                            Console.WriteLine($"Label {s["Label"]} - Similarity {s["Value"]}");
+                            Trace.WriteLine($"Label {s["Label"]} - Similarity {s["Value"]}");
+                        }
+
+                        // get % of prediction for each label
+                        foreach (var freq in testCountFreq)
+                        {
+                            Console.WriteLine($"% of label {freq.Key}: {Math.Round(100 * freq.Value / topN_test)} %");
+                            Trace.WriteLine($"% of label {freq.Key}: {Math.Round(100 * freq.Value / topN_test)} %");
+                        }
+
+                        // get predictedLabel based on the highest %
+                        // if % of labels are equal -> take the one with lowest arrayGeometricDistance, which has been already sorted in top3_similarity
+                        testPredictedLabel = testCountFreq.OrderByDescending(x => x.Value).First().Key;
+
+                        Console.WriteLine($"{testActualLabel} predicted as {testPredictedLabel}");
+                        Trace.WriteLine($"{testActualLabel} predicted as {testPredictedLabel}");
+                        Console.WriteLine("=======================================");
+                        Trace.WriteLine("=======================================");
+
+                        // Generate semantic array for test image
+                        current = Utility.AddArray(current, spLayer1.Predict(frameImage));
+                    }        
+                }
+                //Thread.Sleep(2000);
+                //Trace.Unindent();
+                Trace.Flush();
+                Trace.Close();
+
+
+
+
+                #region runTest
+
+                //    string actualLabel = testImage.Label;
+                //    string predictedLabel = "unknow";
+                //    //double lowestMatch = 10000;
+
+                //    Trace.WriteLine($"Actual label: {actualLabel}");
+
+                //    List <Dictionary<string, string>> similarityList = new List<Dictionary<string, string>>();
+
+                //    foreach (var digitClass in lib)
+                //    {
+                //        string currentLabel = digitClass.Key;
+                //        foreach (var entry in digitClass.Value)
+                //        {
+                //            double arrayGeometricDistance = Utility.CalArrayUnion(entry, current);
+                //            similarityList.Add(new Dictionary<string, string>() 
+                //            {
+                //                {"Label", currentLabel},
+                //                {"Value", Convert.ToString(arrayGeometricDistance)}
+                //            });  
+
+                //            //if (arrayGeometricDistance < lowestMatch)
+                //            //{
+                //            //    predictedLabel = currentLabel;
+                //            //    lowestMatch = arrayGeometricDistance;
+                //            //}
+                //        }
+                //    }
+
+                //    // get top 3 lowest arrayGeometricDistance
+                //    // sorted from lowest arrayGeometricDistance to highest
+                //    int topN = 3;
+                //    var topN_similarity = similarityList.OrderBy(dict => Convert.ToDouble(dict["Value"])).ThenByDescending(dict => dict["Label"]).Take(topN);
+
+                //    // get # of times each lable is predicted
+                //    Dictionary<string, double> countFreq = new Dictionary<string, double>();
+                //    foreach (var s in topN_similarity)
+                //    {
+                //        if (!countFreq.ContainsKey(s["Label"]))
+                //        {
+                //            countFreq.Add(s["Label"], 0);
+                //        }
+                //        countFreq[s["Label"]] += 1;
+                //        Console.WriteLine($"Label {s["Label"]} - Similarity {s["Value"]}");
+                //        Trace.WriteLine($"Label {s["Label"]} - Similarity {s["Value"]}");
+                //    }
+
+                //    // get % of prediction for each label
+                //    foreach (var freq in countFreq)
+                //    {
+                //        Console.WriteLine($"% of label {freq.Key}: {Math.Round(100*freq.Value/topN)} %");
+                //        Trace.WriteLine($"% of label {freq.Key}: {Math.Round(100 * freq.Value / topN)} %");
+                //    }
+
+                //    // get predictedLabel based on the highest %
+                //    // if % of labels are equal -> take the one with lowest arrayGeometricDistance, which has been already sorted in top3_similarity
+                //    predictedLabel = countFreq.OrderByDescending(x => x.Value).First().Key;
+
+                //    // if predictedLabel match with actualLabel -> increase # corretion prediction 1 unit.
+                //    if (actualLabel == predictedLabel)
+                //    {
+                //        match += 1;
+                //    }
+                //    Console.WriteLine($"{actualLabel} predicted as {predictedLabel}");
+                //    Trace.WriteLine($"{actualLabel} predicted as {predictedLabel}");
+                //    Console.WriteLine("=======================================");
+                //    Trace.WriteLine("=======================================");
+
+                //}
+
+                //Console.WriteLine($"Accuracy = {(double)100*(((double)match) / ((double)testSet_32x32.Count))} %");
+                //Trace.WriteLine($"Accuracy = {(double)100*(((double)match) / ((double)testSet_32x32.Count))} %");
+
+                //Trace.WriteLine("============= Exiting Main =============");
+                //Trace.Unindent();
+                //Trace.Flush();
+                #endregion
+            }
+
+            Console.WriteLine("test");
+        }
+
+
+        /// <summary>
+        /// Latest Experiment
+        /// </summary>
+        /// <param name="experimentFolder"></param>
+        private static void Toan_InvariantRepresentation(string experimentFolder)
         {
             Utility.CreateFolderIfNotExist(experimentFolder);
 
@@ -46,7 +377,7 @@ namespace InvariantLearning
 
             // write extracted/filtered frame from 32x32 dataset into 4x4 for SP to learn all pattern
             //var listOfFrame = Frame.GetConvFrames(width, height, 4, 4, 8, 8);
-            var listOfFrame = Frame.GetConvFramesbyPixel(32, 32, 4, 4);
+            var listOfFrame = Frame.GetConvFramesbyPixel(32, 32, 4, 4, 4);
             string extractedFrameFolder = Path.Combine(experimentFolder, "extractedFrame");
             int index = 0;
             List<string> frameDensityList = new List<string>();
@@ -125,7 +456,7 @@ namespace InvariantLearning
             Utility.CreateFolderIfNotExist(testFolder);
             int match = 0;
             //listOfFrame = Frame.GetConvFrames(100, 100, 4, 4, 25, 25);
-            listOfFrame = Frame.GetConvFramesbyPixel(100, 100, 4, 4,2);
+            listOfFrame = Frame.GetConvFramesbyPixel(100, 100, 4, 4, 4);
             foreach (var testImage in scaledTestSet.Images)
             {
                 string testImageFolder = Path.Combine(testFolder, $"{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}");
