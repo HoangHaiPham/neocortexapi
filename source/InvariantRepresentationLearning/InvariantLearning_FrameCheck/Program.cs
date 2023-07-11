@@ -19,8 +19,8 @@ namespace InvariantLearning_FrameCheck
             // Invariant Learning Experiment
 
             //string experimentTime = DateTime.UtcNow.ToShortDateString().ToString().Replace('/', '-');
-            Console.WriteLine($"HtmInvariantLearning {experimentTime}");
-            Test_InvariantRepresentation($"HtmInvariantLearning {experimentTime}");
+            Console.WriteLine($"16x16_800-200_testNotInTrain_400_scorefilter0_HtmInvariantLearning {experimentTime}");
+            Test_InvariantRepresentation($"16x16_800-200_testNotInTrain_400_scorefilter0_HtmInvariantLearning {experimentTime}");
         }
 
 
@@ -42,19 +42,19 @@ namespace InvariantLearning_FrameCheck
             // Get the folder of MNIST archives tar.gz files.
             string sourceMNIST = Path.Combine(experimentFolder, "MnistSource");
             Utility.CreateFolderIfNotExist(sourceMNIST);
-            Mnist.DataGen("MnistDataset", sourceMNIST, 50);
+            Mnist.DataGen("MnistDataset", sourceMNIST, 100);
 
             // generate 32x32 source MNISTDataSet
             int imageWidth = 32; int imageHeight = 32;
-            int frameWidth = 4; int frameHeight = 4;
-            int pixelShifted = 4;
+            int frameWidth = 16; int frameHeight = 16;
+            int pixelShifted = 16;
 
             // use 28x28
             DataSet sourceSet = new DataSet(sourceMNIST);
             //DataSet sourceSet_32x32 = sourceSet;
 
             DataSet sourceSet_32x32 = DataSet.ScaleSet(experimentFolder, imageWidth, imageHeight, sourceSet, "sourceSet");
-            DataSet testSet_32x32 = sourceSet_32x32.GetTestData(10);
+            DataSet testSet_32x32 = sourceSet_32x32.GetTestData(20);
 
             //DataSet scaledTestSet = DataSet.CreateTestSet(testSet_32x32, 100, 100, Path.Combine(experimentFolder, "testSet_100x100"));
             //DataSet scaledTrainSet = DataSet.CreateTestSet(sourceSet_32x32, 100, 100, Path.Combine(experimentFolder, "trainSet_100x100"));
@@ -341,7 +341,7 @@ namespace InvariantLearning_FrameCheck
 
             Debug.WriteLine("Start training ...");
 
-            LearningUnit learningUnit1 = new LearningUnit(4, 4, numColumns, "placeholder");
+            LearningUnit learningUnit1 = new LearningUnit(16, 16, numColumns, "placeholder");
             learningUnit1.TrainingNewbornCycle(trainingSet);
 
             //
@@ -381,7 +381,7 @@ namespace InvariantLearning_FrameCheck
             double match = 0;
             foreach (var item in testingSamplesDict)
             {
-                string logFileName = Path.Combine(item.Value[0].FramePath, @"..\..", $"{(item.Value[0].FramePath).Split('\\')[^2]}_Frame_Prediction_4x4_500-50_testNotInTrain_200.log");
+                string logFileName = Path.Combine(item.Value[0].FramePath, @"..\..", $"{(item.Value[0].FramePath).Split('\\')[^2]}_Frame_Prediction_16x16_800-200_testNotInTrain_cycle400_scorefilter0.log");
 
                 TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
                 Trace.Listeners.Add(myTextListener);

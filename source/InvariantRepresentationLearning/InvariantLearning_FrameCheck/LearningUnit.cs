@@ -105,7 +105,7 @@ namespace InvariantLearning_FrameCheck
 
             // Training In New Born State
             int cycle = 0;
-            int maxCycle = 200;
+            int maxCycle = 400;
             Stopwatch sw = Stopwatch.StartNew();
             sw.Start();
             while (cycle < maxCycle)

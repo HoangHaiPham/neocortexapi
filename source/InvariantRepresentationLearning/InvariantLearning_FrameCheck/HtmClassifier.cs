@@ -63,6 +63,11 @@ namespace NeoCortexApi.Classifiers
 
         private Dictionary<TIN, List<int[]>> m_SelectedInputs = new Dictionary<TIN, List<int[]>>();
         private List<Sample> m_SelectedSamples = new List<Sample>();
+        
+        // HAI
+        //private List<Dictionary<string, double>> m_SumSimilarityScoreSamples = new List<Dictionary<string, double>>();
+        private Dictionary<string, double> m_SumSimilarityScoreSamples = new Dictionary<string,double>();
+
 
         /// <summary>
         /// Mapping between the input key and the SDR assootiated to the input.
@@ -272,10 +277,49 @@ namespace NeoCortexApi.Classifiers
             foreach (var testingSample in testingSamples)
             {
                 //var matchingFeatureList = GetMatchingFeatures(m_AllSamples.Select(i => i.PixelIndicies), testingSample.PixelIndicies, howManyFeatures);
-                var matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
+                //var matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
 
-                AddSelectedSamples(testingSample, matchingFeatureList);
+                //Dictionary<Sample, double> results = new Dictionary<Sample, double>();
+
+                Dictionary<Sample, double> matchingFeatureList = new Dictionary<Sample, double>();
+                matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
+
+                var sumSimilarity = matchingFeatureList.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value), 2));
+
+                //m_SumSimilarityScoreSamples.Add(sumSimilarity);
+                foreach (var label in sumSimilarity)
+                {
+                    if (!m_SumSimilarityScoreSamples.ContainsKey(label.Key))
+                    {
+                        m_SumSimilarityScoreSamples.Add(label.Key, label.Value);
+                    }
+                    else
+                    {
+                        m_SumSimilarityScoreSamples[label.Key] += label.Value;
+                    }
+                }
+                
+                //AddSelectedSamples(testingSample, matchingFeatureList);
             }
+
+            foreach (var digit in m_SumSimilarityScoreSamples)
+            {
+                Trace.WriteLine($"Sum similarity of label {digit.Key}: {digit.Value}");
+            }
+
+            var sumPredictedLabel = m_SumSimilarityScoreSamples.MaxBy(entry => entry.Value);
+
+            Trace.WriteLine($"Label {testingSamples[0].Object} predicted as (maxSum) {sumPredictedLabel.Key}");
+            Trace.WriteLine("=======================================");
+
+            m_SumSimilarityScoreSamples.Clear();
+            // ==================== HAI ====================
+
+
+
+
+
+
             //m_SelectedSamples = m_SelectedSamples.GroupBy(x => x.PixelIndicies).Select(y => y.First()).ToList();
 
             var selectedDict = m_SelectedSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
@@ -515,18 +559,22 @@ namespace NeoCortexApi.Classifiers
         /// Get the best matching features with the most same bits.
         /// </summary>
         //public List<int[]> GetMatchingFeatures(IEnumerable<int[]> trainingSamplesIndicies, int[] testingSamplesIndicies, int maxFeatures)
-        public List<int[]> GetMatchingFeatures(List<Sample> trainingSamplesIndicies, Sample testingSamplesIndicies, int maxFeatures)
+        //public List<int[]> GetMatchingFeatures(List<Sample> trainingSamplesIndicies, Sample testingSamplesIndicies, int maxFeatures)
+        public Dictionary<Sample, double> GetMatchingFeatures(List<Sample> trainingSamplesIndicies, Sample testingSamplesIndicies, int maxFeatures)
+
         {
             //double maxSimilarity = 10.0;
             //int maxSameBits = 0;
-            Dictionary <Sample, double> re = new Dictionary <Sample, double>();
-            List<int[]> results = new List<int[]>();
+            Dictionary <Sample, double> similarityScore = new Dictionary <Sample, double>();
+            Dictionary <Sample, double> results = new Dictionary<Sample, double>();
+
+            //List<int[]> results = new List<int[]>();
             foreach (var trainingIndicies in trainingSamplesIndicies)
             {
                 double similarity = MathHelpers.CalcArraySimilarity(testingSamplesIndicies.PixelIndicies, trainingIndicies.PixelIndicies);
-                if (!re.ContainsKey(trainingIndicies))
+                if (!similarityScore.ContainsKey(trainingIndicies))
                 {
-                    re.Add(trainingIndicies, similarity);
+                    similarityScore.Add(trainingIndicies, similarity);
                 }
 
                 //if (similarity > maxSimilarity)
@@ -553,7 +601,15 @@ namespace NeoCortexApi.Classifiers
             //    results.RemoveRange(0, results.Count - maxFeatures);
             //}
 
-            var topN_similarity = re.OrderByDescending(entry => entry.Value).Take(maxFeatures).ToDictionary(pair => pair.Key, pair => pair.Value);
+            // get highest similarity score
+            var maxSimilarityScore = similarityScore.MaxBy(entry => entry.Value);
+            //double thresholdSimilarityScore = maxSimilarityScore.Value / 2;
+            double thresholdSimilarityScore = 0;
+
+            // filter SDRs which have similarity score >= maxSimilarityScore
+            var topN_similarity = similarityScore.Where(entry => entry.Value > thresholdSimilarityScore).ToDictionary(pair => pair.Key, pair => pair.Value);
+            //var topN_similarity = similarityScore.OrderByDescending(entry => entry.Value).Take(maxFeatures).ToDictionary(pair => pair.Key, pair => pair.Value);
+
 
             //TextWriterTraceListener myTextListener = new TextWriterTraceListener(Path.Combine(testingSamplesIndicies.FramePath, @"..\", $"{(testingSamplesIndicies.FramePath).Split('\\')[^2]}_Frame_Prediction_16x16_testInTrain_3.log"));
             //Trace.Listeners.Add(myTextListener);
@@ -563,33 +619,62 @@ namespace NeoCortexApi.Classifiers
 
             foreach (var simi in topN_similarity)
             {
-                Trace.WriteLine($"Predict label {simi.Key.Object} - Similarity: {Math.Round(simi.Value, 2)}");
+                Trace.WriteLine($"Predicted label {simi.Key.Object} - Similarity: {Math.Round(simi.Value, 2)}");
             }
-            // get % of prediction for each label
-            var testCountFreq = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => group.ToList().Count);
-            foreach (var freq in testCountFreq)
+
+            // count the number of times that label is predicted
+            var countSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => group.ToList().Count);
+            // sum all similarity score for each table
+            var sumSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value),2));
+            // avg = sumSimilarity/Count
+            var avgSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value)/group.ToList().Count, 2));
+
+            foreach (var digit in countSimilarityEachLabel)
             {
-                Trace.WriteLine($"% of label {freq.Key}: {Math.Round(100 * (double)(freq.Value) / (double)maxFeatures, 2)} %");
+                //Trace.WriteLine($"% of label {freq.Key}: {Math.Round(100 * (double)(freq.Value) / (double)maxFeatures, 2)} %");
+                Trace.WriteLine($"count similarity >= {thresholdSimilarityScore}% of label {digit.Key}: {digit.Value} - Sum similarity of label {digit.Key}: {sumSimilarityEachLabel[digit.Key]} - Avg similarity of label {digit.Key}: {avgSimilarityEachLabel[digit.Key]}");
+                //Trace.WriteLine($"Sum similarity of label {digit.Key}: {sumSimilarityEachLabel[digit.Key]}");
+                //Trace.WriteLine($"Avg similarity of label {digit.Key}: {avgSimilarityEachLabel[digit.Key]}");
             }
 
             // get label predict
-            var testPredictedLabel = "unknow";
-            var maxSimilarity = topN_similarity.MaxBy(v => v.Value);
-            if (maxSimilarity.Value > 98.99)
+            var countPredictedLabel = "unknow";
+            var sumPredictedLabel = "unknow";
+            var avgPredictedLabel = "unknow";
+            //var maxSimilarityScore = topN_similarity.MaxBy(v => v.Value);
+            if (maxSimilarityScore.Value >= 99)
             {
-                testPredictedLabel = maxSimilarity.Key.Object;
+                countPredictedLabel = maxSimilarityScore.Key.Object;
+                sumPredictedLabel = maxSimilarityScore.Key.Object;
+                avgPredictedLabel = maxSimilarityScore.Key.Object;
             }
             else
             {
-                testPredictedLabel = testCountFreq.OrderByDescending(x => x.Value).First().Key;
+                countPredictedLabel = countSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+                sumPredictedLabel = sumSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+                avgPredictedLabel = avgSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
             }
-
-            Trace.WriteLine($"{testingSamplesIndicies.Object} predicted as {testPredictedLabel}");
+            Trace.WriteLine($"Label {testingSamplesIndicies.Object}: predicted as (maxCount) {countPredictedLabel} - predicted as (maxSum) {sumPredictedLabel} - predicted as (maxAvg) {avgPredictedLabel}");
             Trace.WriteLine("=======================================");
-            //Trace.Flush();
-            //Trace.Close();
 
-            results = topN_similarity.Select(x => x.Key.PixelIndicies).ToList();
+            //// get label predict
+            //var testPredictedLabel = "unknow";
+            //var maxSimilarity = topN_similarity.MaxBy(v => v.Value);
+            //if (maxSimilarity.Value > 98.99)
+            //{
+            //    testPredictedLabel = maxSimilarity.Key.Object;
+            //}
+            //else
+            //{
+            //    testPredictedLabel = testCountFreq.OrderByDescending(x => x.Value).First().Key;
+            //}
+
+            //Trace.WriteLine($"{testingSamplesIndicies.Object} predicted as {testPredictedLabel}");
+            //Trace.WriteLine("=======================================");
+
+            //results = topN_similarity.Select(x => x.Key.PixelIndicies).ToList();
+
+            results = topN_similarity;
 
             return results;
         }
