@@ -397,7 +397,8 @@ namespace NeoCortexApi.Entities
             this.GlobalInhibition = true;
             //this.InhibitionRadius = 15;
             this.LocalAreaDensity = -1.0;
-            this.NumActiveColumnsPerInhArea = 0.02 * 2048;
+            //this.NumActiveColumnsPerInhArea = 0.02 * 2048;
+            this.NumActiveColumnsPerInhArea = 0.02 * (double)columnDims.Sum();
             this.StimulusThreshold = 5.0;
             this.SynPermInactiveDec = 0.008;
             this.SynPermActiveInc = 0.05;

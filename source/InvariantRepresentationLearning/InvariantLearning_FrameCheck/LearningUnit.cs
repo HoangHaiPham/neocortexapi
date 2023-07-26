@@ -56,7 +56,7 @@ namespace InvariantLearning_FrameCheck
         /// Training in newborn cycle
         /// </summary>
         /// <param name="trainingDataSet">the Training Dataset</param>
-        public void TrainingNewbornCycle(DataSet trainingDataSet)
+        public void TrainingNewbornCycle(DataSet trainingDataSet, int maxCycle=10)
         {
             // HTM CONFIG
             HtmConfig config = new HtmConfig(new int[] { width * height }, new int[] { columnDim })
@@ -105,7 +105,6 @@ namespace InvariantLearning_FrameCheck
 
             // Training In New Born State
             int cycle = 0;
-            int maxCycle = 400;
             Stopwatch sw = Stopwatch.StartNew();
             sw.Start();
             while (cycle < maxCycle)
@@ -294,8 +293,8 @@ namespace InvariantLearning_FrameCheck
             {
                 return new int[columnDim];
             }
-            return activeColumns;
-            //return ToSDRBinArray(activeColumns);
+            //return activeColumns;
+            return ToSDRBinArray(activeColumns);
         }
 
         public int[] ToSDRBinArray(int[] activeColumns)

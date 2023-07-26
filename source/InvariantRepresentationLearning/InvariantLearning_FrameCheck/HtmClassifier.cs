@@ -272,7 +272,9 @@ namespace NeoCortexApi.Classifiers
             m_AllMnistSamples.AddRange(mnistSamples);
         }
 
-        public List<Sample> PredictObj(List<Sample> testingSamples, int howManyFeatures)
+        //public List<Sample> PredictObj(List<Sample> testingSamples, int howManyFeatures)
+        public string PredictObj(List<Sample> testingSamples, int howManyFeatures)
+
         {
             foreach (var testingSample in testingSamples)
             {
@@ -313,6 +315,11 @@ namespace NeoCortexApi.Classifiers
             Trace.WriteLine("=======================================");
 
             m_SumSimilarityScoreSamples.Clear();
+
+            return sumPredictedLabel.Key;
+
+            //predict = sumPredictedLabel;
+            //return predict;
             // ==================== HAI ====================
 
 
@@ -320,77 +327,77 @@ namespace NeoCortexApi.Classifiers
 
 
 
-            //m_SelectedSamples = m_SelectedSamples.GroupBy(x => x.PixelIndicies).Select(y => y.First()).ToList();
+            ////m_SelectedSamples = m_SelectedSamples.GroupBy(x => x.PixelIndicies).Select(y => y.First()).ToList();
 
-            var selectedDict = m_SelectedSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
+            //var selectedDict = m_SelectedSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
 
-            int maxScore = 0;
-            string firstWinner = "unkown";
-            string secondWinner = "unkown";
-            string thirdWinner = "unkown";
-            Frame frame = new Frame(0, 0, 0, 0);
-            Sample winnerSample = new Sample();
-            foreach (var objDict in selectedDict)
-            {
-                int score = 0;
-                for (var i = 0; i < objDict.Value.Count; i++)
-                {
-                    for (var j = i + 1; j < objDict.Value.Count; j++)
-                    {
-                        if ((Math.Abs(objDict.Value[i].Position.tlX - objDict.Value[j].Position.tlX) <= 1)
-                            && (Math.Abs(objDict.Value[i].Position.tlY - objDict.Value[j].Position.tlY) <= 1))
-                        {
-                            score++;
-                            if (score > maxScore)
-                            {
-                                maxScore = score;
-                                secondWinner = firstWinner;
-                                thirdWinner = secondWinner;
-                                //if (firstWinner != objDict.Key)
-                                //{
-                                //    frame.tlX = 0;
-                                //    frame.tlY = 0;
-                                //    frame.brX = 0;
-                                //    frame.brY = 0;
-                                //}
-                                //else
-                                //{
-                                //    frame.tlX = (frame.tlX + objDict.Value[j].Position.tlX) / 2;
-                                //    frame.tlY = (frame.tlY + objDict.Value[j].Position.tlY) / 2;
-                                //    frame.brX = (frame.brX + objDict.Value[j].Position.brX) / 2;
-                                //    frame.brY = (frame.brY + objDict.Value[j].Position.brY) / 2;
-                                //}
-                                firstWinner = objDict.Key;
-                            }
-                        }
-                    }
-                }
-                //foreach (var sampleOuter in objDict.Value)
-                //{
-                //    foreach (var sampleInner in objDict.Value)
-                //    {
-                //        int score = 0;
-                //        if ((Math.Abs(sampleOuter.Position.tlX - sampleInner.Position.tlX) <= 2)
-                //            && (Math.Abs(sampleOuter.Position.tlY - sampleInner.Position.tlY) <= 2))
-                //        {
-                //            score++;
-                //            if (score > maxScore)
-                //            {
-                //                maxScore = score;
-                //                winner = sampleInner.Object;
-                //            }
+            //int maxScore = 0;
+            //string firstWinner = "unkown";
+            //string secondWinner = "unkown";
+            //string thirdWinner = "unkown";
+            //Frame frame = new Frame(0, 0, 0, 0);
+            //Sample winnerSample = new Sample();
+            //foreach (var objDict in selectedDict)
+            //{
+            //    int score = 0;
+            //    for (var i = 0; i < objDict.Value.Count; i++)
+            //    {
+            //        for (var j = i + 1; j < objDict.Value.Count; j++)
+            //        {
+            //            if ((Math.Abs(objDict.Value[i].Position.tlX - objDict.Value[j].Position.tlX) <= 1)
+            //                && (Math.Abs(objDict.Value[i].Position.tlY - objDict.Value[j].Position.tlY) <= 1))
+            //            {
+            //                score++;
+            //                if (score > maxScore)
+            //                {
+            //                    maxScore = score;
+            //                    secondWinner = firstWinner;
+            //                    thirdWinner = secondWinner;
+            //                    //if (firstWinner != objDict.Key)
+            //                    //{
+            //                    //    frame.tlX = 0;
+            //                    //    frame.tlY = 0;
+            //                    //    frame.brX = 0;
+            //                    //    frame.brY = 0;
+            //                    //}
+            //                    //else
+            //                    //{
+            //                    //    frame.tlX = (frame.tlX + objDict.Value[j].Position.tlX) / 2;
+            //                    //    frame.tlY = (frame.tlY + objDict.Value[j].Position.tlY) / 2;
+            //                    //    frame.brX = (frame.brX + objDict.Value[j].Position.brX) / 2;
+            //                    //    frame.brY = (frame.brY + objDict.Value[j].Position.brY) / 2;
+            //                    //}
+            //                    firstWinner = objDict.Key;
+            //                }
+            //            }
+            //        }
+            //    }
+            //    //foreach (var sampleOuter in objDict.Value)
+            //    //{
+            //    //    foreach (var sampleInner in objDict.Value)
+            //    //    {
+            //    //        int score = 0;
+            //    //        if ((Math.Abs(sampleOuter.Position.tlX - sampleInner.Position.tlX) <= 2)
+            //    //            && (Math.Abs(sampleOuter.Position.tlY - sampleInner.Position.tlY) <= 2))
+            //    //        {
+            //    //            score++;
+            //    //            if (score > maxScore)
+            //    //            {
+            //    //                maxScore = score;
+            //    //                winner = sampleInner.Object;
+            //    //            }
 
-                //        }
-                //    }
-                //}
-            }
-            winnerSample.Object = firstWinner;
-            winnerSample.Position = frame;
-            m_WinnerSamples.Add(winnerSample);
+            //    //        }
+            //    //    }
+            //    //}
+            //}
+            //winnerSample.Object = firstWinner;
+            //winnerSample.Position = frame;
+            //m_WinnerSamples.Add(winnerSample);
 
-            m_SelectedSamples.Clear();
+            //m_SelectedSamples.Clear();
 
-            return m_WinnerSamples;
+            //return m_WinnerSamples;
         }
 
         //public List<Sample> PredictObj2(List<Sample> testingSamples, int howManyFeatures)
