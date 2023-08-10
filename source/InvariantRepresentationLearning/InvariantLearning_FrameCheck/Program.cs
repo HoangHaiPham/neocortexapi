@@ -21,19 +21,17 @@ namespace InvariantLearning_FrameCheck
         public static int FRAME_WIDTH = 14; 
         public static int FRAME_HEIGHT = 14;
         public static int PIXEL_SHIFTED = 14;
-        public static int MAX_CYCLE = 5;
-        public static int NUM_IMAGES_PER_LABEL = 10;
+        public static int MAX_CYCLE = 10;
+        public static int NUM_IMAGES_PER_LABEL = 20;
         public static int PER_TESTSET = 10;
-
 
 
         public static void Main()
         {
-            string experimentTime = DateTime.UtcNow.ToLongDateString().ToString().Replace(',', '_') + DateTime.UtcNow.ToLongTimeString().ToString().Replace(':', '_');
-            // Invariant Learning Experiment
+            string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
 
             //string experimentTime = DateTime.UtcNow.ToShortDateString().ToString().Replace('/', '-');
-            Console.WriteLine($"HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL*10}-{PER_TESTSET}%_Cycle {MAX_CYCLE}_{experimentTime}");
+            Console.WriteLine($"HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL*10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}_{experimentTime}");
             TestSemantic_InvariantRepresentation($"HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL*10}-{PER_TESTSET}%_Cycle {MAX_CYCLE}_{experimentTime}");
         }
 
@@ -90,7 +88,7 @@ namespace InvariantLearning_FrameCheck
 
                 foreach (var frame in listOfFrame)
                 {
-                    if (image.IsRegionInDensityRange(frame, 5, 100))
+                    if (image.IsRegionInDensityRange(frame, 0, 100))
                     {
                         if (!DataSet.ExistImageInDataSet(image, extractedFrameFolder, frame))
                         {
@@ -149,7 +147,7 @@ namespace InvariantLearning_FrameCheck
 
                 foreach (var frame in listOfFrame)
                 {
-                    if (testImage.IsRegionInDensityRange(frame, 5, 100))
+                    if (testImage.IsRegionInDensityRange(frame, 0, 100))
                     {
                         if (!DataSet.ExistImageInDataSet(testImage, testExtractedFrameFolder, frame))
                         {
@@ -210,8 +208,7 @@ namespace InvariantLearning_FrameCheck
             learningUnit1.TrainingNewbornCycle(trainingSet, MAX_CYCLE);
 
             
-            // Add the stable SDRs to samples.
-            List<Sample> samples = new List<Sample>();
+            // Generate SDR for training samples.
             foreach (var trainingSample in trainingSamples)
             {
                 var activeColumns = learningUnit1.Predict(trainingSample.FramePath);
@@ -219,69 +216,49 @@ namespace InvariantLearning_FrameCheck
                 {
                     trainingSample.PixelIndicies = new int[activeColumns.Length];
                     trainingSample.PixelIndicies = activeColumns;
-                    samples.Add(trainingSample);
                 }
             }
 
             // Semantic array for each ImageName in Training Set (combine all the SDR frames to be the unique SDR)
-            var trainImageName_SDRFrames = trainingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
-            Dictionary<string, List<List<int>>> trainLabel_SDRList = new Dictionary<string, List<List<int>>>();
+            // var trainImageName_SDRFrames = trainingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+            var trainImageName_SDRFrames = trainingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath)).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+
+            List<Sample> trainLabel_SDRListIndexes = new List<Sample>();
+            // Loop through each image
             foreach (var imageName in trainImageName_SDRFrames)
             {
-                string label = imageName.Key.Split('_')[1];
-                if (!trainLabel_SDRList.ContainsKey(label))
-                {
-                    trainLabel_SDRList.Add(label, new List<List<int>>());
-                }
+                string label = imageName.Key.Split('\\').Last().Split('_')[1];
+
+                Sample sample = new Sample();
+                sample.Object = label;
+                sample.FramePath = imageName.Key;
+
+                // Combine all SDR frames to form an unique SDR
                 List<int> combineSDRFrames = new List<int>();
                 foreach (int[] i in imageName.Value)
                 {
                     combineSDRFrames.AddRange(i);
                 }
-                trainLabel_SDRList[label].Add(combineSDRFrames);
+
+                // Compression SDR to store indexes of on bit
+                int[] unique_sdr = combineSDRFrames.ToArray();
+                List<int> SDRIndexes = new List<int>();
+                for (int i = 0; i < unique_sdr.Length; i += 1)
+                {
+                    if (unique_sdr[i] > 0)
+                    {
+                        SDRIndexes.Add(i);
+                    }
+                }
+                sample.PixelIndicies = SDRIndexes.ToArray();
+                trainLabel_SDRListIndexes.Add(sample);
             }
 
-            //cls.LearnObj(trainLabel_SDRList);
-
-            //foreach (var imageName in imageName_SDRFrames)
-            //{
-            //    if (!imageName_SDRList.ContainsKey(imageName.Key))
-            //    {
-            //        imageName_SDRList.Add(imageName.Key, new List<int>());
-            //    }
-            //    foreach (int[] i in imageName.Value)
-            //    {
-            //        imageName_SDRList[imageName.Key].AddRange(i);
-            //    }
-            //}
-
-            //var labelName_SDRList = imageName_SDRList.Select(x => x).GroupBy(x => x.Key.Split('_')[1]).ToDictionary(g => g.Key, g => g.ToList());
+            cls.LearnObj(trainLabel_SDRListIndexes);
 
 
-            //foreach (var trainingSample in trainingSamples)
-            //{
-            //    //Console.WriteLine(Path.GetDirectoryName(trainingSample.FramePath).Split('\\').Last());
 
-            //    //Path.GetFileName(trainingSample.FramePath);
-
-            //    foreach (var imageFolder in Directory.GetDirectories(trainingSample.FramePath))
-            //    {
-
-            //        //Console.WriteLine(Path.GetDirectoryName(trainingSample.FramePath).Split('\\').Last());
-
-            //        var activeColumns = learningUnit1.Predict(trainingSample.FramePath);
-            //    if (activeColumns != null && activeColumns.Length != 0)
-            //    {
-            //        trainingSample.PixelIndicies = new int[activeColumns.Length];
-            //        trainingSample.PixelIndicies = activeColumns;
-            //        samples.Add(trainingSample);
-            //    }
-            //}
-
-            //cls.LearnObj(samples);
-
-
-            // Create and add SDRs for the testing samples.
+            // Generate SDR for testing samples.
             foreach (var testingSample in testingSamples)
             {
                 var activeColumns = learningUnit1.Predict(testingSample.FramePath);
@@ -293,80 +270,292 @@ namespace InvariantLearning_FrameCheck
             }
 
             // Semantic array for each ImageName in Testing Set (combine all the SDR frames to be the unique SDR)
-            var testImageName_SDRFrames = testingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
-            Dictionary<string, List<List<int>>> testLabel_SDRList = new Dictionary<string, List<List<int>>>();
+            //var testImageName_SDRFrames = testingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+            var testImageName_SDRFrames = testingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath)).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+
+            List<Sample> testLabel_SDRListIndexes = new List<Sample>();
+            // Loop through each image
             foreach (var imageName in testImageName_SDRFrames)
             {
-                string label = imageName.Key.Split('_')[1];
-                if (!testLabel_SDRList.ContainsKey(label))
-                {
-                    testLabel_SDRList.Add(label, new List<List<int>>());
-                }
+                string label = imageName.Key.Split('\\').Last().Split('_')[1];
+                Sample sample = new Sample();
+                sample.Object = label;
+                sample.FramePath = imageName.Key;
+
+                // Combine all SDR frames to form an unique SDR
                 List<int> combineSDRFrames = new List<int>();
                 foreach (int[] i in imageName.Value)
                 {
                     combineSDRFrames.AddRange(i);
                 }
-                testLabel_SDRList[label].Add(combineSDRFrames);
+
+                // Compression SDR to store indexes of on bit
+                int[] unique_sdr = combineSDRFrames.ToArray();
+                List<int> SDRIndexes = new List<int>();
+                for (int i = 0; i < unique_sdr.Length; i += 1)
+                {
+                    if (unique_sdr[i] > 0)
+                    {
+                        SDRIndexes.Add(i);
+                    }
+                }
+                sample.PixelIndicies = SDRIndexes.ToArray();
+                testLabel_SDRListIndexes.Add(sample);
             }
 
-            //////////STOP AT HERE
-
-            Debug.WriteLine("Running test ...");
-
-
-            // Classifying each testing sample.
-            //var testingSamplesDict = testingSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
-            var testingSamplesDict = testingSamples.Select(x => x).GroupBy(x => x.FramePath.Split('\\')[^2]).ToDictionary(group => group.Key, group => group.ToList());
 
             double match = 0;
-            Dictionary<string, string> finalPredict = new Dictionary<string, string>();
+            Dictionary<string, List<string>> finalPredict = new Dictionary<string, List<string>>();
 
-            foreach (var item in testingSamplesDict)
+            foreach (var item in testLabel_SDRListIndexes)
             {
-                string logFileName = Path.Combine(item.Value[0].FramePath, @"..\..", $"{(item.Value[0].FramePath).Split('\\')[^2]}_Frame_Prediction_16x16_1800-200_testNotInTrain_cycle200_scorefilter0.log");
+                if (!finalPredict.ContainsKey(item.Object))
+                {
+                    finalPredict.Add(item.Object, new List<string>());
+                }
 
+                string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
                 TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
                 Trace.Listeners.Add(myTextListener);
-                Trace.WriteLine($"Actual label: {item.Value[0].Object}");
-                Trace.WriteLine($"{(item.Key)}");
+                Trace.WriteLine($"Actual label: {item.Object}");
+                Trace.WriteLine($"{(item.FramePath.Split('\\').Last())}");
                 Trace.WriteLine("=======================================");
-                string predictedObj = cls.PredictObj(item.Value, 5);
+                string predictedObj = cls.HAI_PredictObj(item);
                 Trace.Flush();
                 Trace.Close();
 
-                if (predictedObj.Equals(item.Value[0].Object))
+                if (predictedObj.Equals(item.Object))
                 {
                     match++;
                 }
 
-                if (!finalPredict.ContainsKey(item.Key))
-                {
-                    finalPredict.Add(item.Key, predictedObj);
-                }
-
-                Debug.WriteLine($"{item.Key}: {predictedObj}");
+                finalPredict[item.Object].Add(predictedObj);
+                
+                //Debug.WriteLine($"Actual {item.Object} - Predicted {predictedObj}");
             }
 
-
-
             // Calculate Accuracy
-            double numOfItems = testingSamplesDict.Count();
+            double numOfItems = testLabel_SDRListIndexes.Count();
             var accuracy = (match / numOfItems) * 100;
             testingSamples.Clear();
-            testingSamplesDict.Clear();
 
             string logResult = Path.Combine(experimentFolder, $"Prediction_Result.log");
             TextWriterTraceListener resultFile = new TextWriterTraceListener(logResult);
             Trace.Listeners.Add(resultFile);
             foreach (var r in finalPredict)
             {
-                Trace.WriteLine($"{r.Key}: {r.Value}");
+                foreach (var p in r.Value)
+                {
+                    Trace.WriteLine($"Actual {r.Key}: Predicted {p}");
+                }
             }
-            Debug.WriteLine($"match: {match}/{numOfItems} = {accuracy}%");
-            Debug.WriteLine("------------ END ------------");
+            Trace.WriteLine($"accuracy: {match}/{numOfItems} = {accuracy}%");
             Trace.Flush();
             Trace.Close();
+
+
+
+            //Dictionary<string, List<List<int>>> trainLabel_SDRList = new Dictionary<string, List<List<int>>>();
+            //foreach (var imageName in trainImageName_SDRFrames)
+            //{
+            //    string label = imageName.Key.Split('_')[1];
+            //    if (!trainLabel_SDRList.ContainsKey(label))
+            //    {
+            //        trainLabel_SDRList.Add(label, new List<List<int>>());
+            //    }
+            //    List<int> combineSDRFrames = new List<int>();
+            //    foreach (int[] i in imageName.Value)
+            //    {
+            //        combineSDRFrames.AddRange(i);
+            //    }
+            //    trainLabel_SDRList[label].Add(combineSDRFrames);
+            //}
+
+            ////cls.LearnObj(trainLabel_SDRList);
+
+            ////foreach (var imageName in imageName_SDRFrames)
+            ////{
+            ////    if (!imageName_SDRList.ContainsKey(imageName.Key))
+            ////    {
+            ////        imageName_SDRList.Add(imageName.Key, new List<int>());
+            ////    }
+            ////    foreach (int[] i in imageName.Value)
+            ////    {
+            ////        imageName_SDRList[imageName.Key].AddRange(i);
+            ////    }
+            ////}
+
+            ////var labelName_SDRList = imageName_SDRList.Select(x => x).GroupBy(x => x.Key.Split('_')[1]).ToDictionary(g => g.Key, g => g.ToList());
+
+
+            ////foreach (var trainingSample in trainingSamples)
+            ////{
+            ////    //Console.WriteLine(Path.GetDirectoryName(trainingSample.FramePath).Split('\\').Last());
+
+            ////    //Path.GetFileName(trainingSample.FramePath);
+
+            ////    foreach (var imageFolder in Directory.GetDirectories(trainingSample.FramePath))
+            ////    {
+
+            ////        //Console.WriteLine(Path.GetDirectoryName(trainingSample.FramePath).Split('\\').Last());
+
+            ////        var activeColumns = learningUnit1.Predict(trainingSample.FramePath);
+            ////    if (activeColumns != null && activeColumns.Length != 0)
+            ////    {
+            ////        trainingSample.PixelIndicies = new int[activeColumns.Length];
+            ////        trainingSample.PixelIndicies = activeColumns;
+            ////        samples.Add(trainingSample);
+            ////    }
+            ////}
+
+            ////cls.LearnObj(samples);
+
+
+            //// Create and add SDRs for the testing samples.
+            //foreach (var testingSample in testingSamples)
+            //{
+            //    var activeColumns = learningUnit1.Predict(testingSample.FramePath);
+            //    if (activeColumns != null)
+            //    {
+            //        testingSample.PixelIndicies = new int[activeColumns.Length];
+            //        testingSample.PixelIndicies = activeColumns;
+            //    }
+            //}
+
+            //// Semantic array for each ImageName in Testing Set (combine all the SDR frames to be the unique SDR)
+            //var testImageName_SDRFrames = testingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+            //Dictionary<string, List<List<int>>> testLabel_SDRList = new Dictionary<string, List<List<int>>>();
+            //foreach (var imageName in testImageName_SDRFrames)
+            //{
+            //    string label = imageName.Key.Split('_')[1];
+            //    if (!testLabel_SDRList.ContainsKey(label))
+            //    {
+            //        testLabel_SDRList.Add(label, new List<List<int>>());
+            //    }
+            //    List<int> combineSDRFrames = new List<int>();
+            //    foreach (int[] i in imageName.Value)
+            //    {
+            //        combineSDRFrames.AddRange(i);
+            //    }
+            //    testLabel_SDRList[label].Add(combineSDRFrames);
+            //}
+
+            ////////////STOP AT HERE
+
+            //Debug.WriteLine("Running test ...");
+
+            ////// Compression SDR to store indexes of on bit
+            ////Dictionary<string, List<List<int>>> trainLabel_SDRListIndexes = new Dictionary<string, List<List<int>>>();
+            ////foreach (var trainLabel in trainLabel_SDRList)
+            ////{
+            ////    string label = trainLabel.Key;
+            ////    if (!trainLabel_SDRListIndexes.ContainsKey(label))
+            ////    {
+            ////        trainLabel_SDRListIndexes.Add(label, new List<List<int>>());
+            ////    }
+            ////    foreach (List<int> sdr in trainLabel.Value)
+            ////    {
+            ////        List<int> SDRIndexes = new List<int>();
+            ////        for (int i = 0; i < sdr.Count; i += 1)
+            ////        {
+            ////            if (sdr[i] > 0)
+            ////            {
+            ////                SDRIndexes.Add(i);
+            ////            }
+            ////        }
+            ////        trainLabel_SDRListIndexes[label].Add(SDRIndexes);
+            ////    }
+            ////}
+
+
+
+            //Debug.WriteLine("Running test ...");
+
+
+            ////Dictionary<Sample, double> similarityScore = new Dictionary<Sample, double>();
+            ////foreach (var trainingIndicies in trainingSamplesIndicies)
+            ////{
+            ////    double similarity = MathHelpers.CalcArraySimilarity(testingSamplesIndicies.PixelIndicies, trainingIndicies.PixelIndicies);
+            ////    if (!similarityScore.ContainsKey(trainingIndicies))
+            ////    {
+            ////        similarityScore.Add(trainingIndicies, similarity);
+            ////    }
+
+            ////    //if (similarity > maxSimilarity)
+            ////    //{
+            ////    //    maxSimilarity = similarity;
+            ////    //    results.Add(trainingIndicies);
+            ////    //}
+
+            ////    //var numOfSameBitsPct = testingSamplesIndicies.Intersect(trainingIndicies).Count();
+            ////    //int numOfBits = trainingIndicies.Count();
+            ////    //double similarity = ((double) numOfSameBitsPct/ (double) numOfBits)*100;
+
+            ////    //if (numOfSameBitsPct >= maxSameBits /*similarity >= 50*/)
+            ////    //{
+            ////    //    maxSameBits = numOfSameBitsPct;
+            ////    //    results.Add(trainingIndicies);
+            ////    //}
+            ////}
+
+
+
+
+
+
+
+            //// Classifying each testing sample.
+            ////var testingSamplesDict = testingSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
+            //var testingSamplesDict = testingSamples.Select(x => x).GroupBy(x => x.FramePath.Split('\\')[^2]).ToDictionary(group => group.Key, group => group.ToList());
+
+            //double match = 0;
+            //Dictionary<string, string> finalPredict = new Dictionary<string, string>();
+
+            //foreach (var item in testingSamplesDict)
+            //{
+            //    string logFileName = Path.Combine(item.Value[0].FramePath, @"..\..", $"{(item.Value[0].FramePath).Split('\\')[^2]}_Frame_Prediction_16x16_1800-200_testNotInTrain_cycle200_scorefilter0.log");
+
+            //    TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
+            //    Trace.Listeners.Add(myTextListener);
+            //    Trace.WriteLine($"Actual label: {item.Value[0].Object}");
+            //    Trace.WriteLine($"{(item.Key)}");
+            //    Trace.WriteLine("=======================================");
+            //    string predictedObj = cls.PredictObj(item.Value, 5);
+            //    Trace.Flush();
+            //    Trace.Close();
+
+            //    if (predictedObj.Equals(item.Value[0].Object))
+            //    {
+            //        match++;
+            //    }
+
+            //    if (!finalPredict.ContainsKey(item.Key))
+            //    {
+            //        finalPredict.Add(item.Key, predictedObj);
+            //    }
+
+            //    Debug.WriteLine($"{item.Key}: {predictedObj}");
+            //}
+
+
+
+            //// Calculate Accuracy
+            //double numOfItems = testingSamplesDict.Count();
+            //var accuracy = (match / numOfItems) * 100;
+            //testingSamples.Clear();
+            //testingSamplesDict.Clear();
+
+            //string logResult = Path.Combine(experimentFolder, $"Prediction_Result.log");
+            //TextWriterTraceListener resultFile = new TextWriterTraceListener(logResult);
+            //Trace.Listeners.Add(resultFile);
+            //foreach (var r in finalPredict)
+            //{
+            //    Trace.WriteLine($"{r.Key}: {r.Value}");
+            //}
+            //Debug.WriteLine($"match: {match}/{numOfItems} = {accuracy}%");
+            //Debug.WriteLine("------------ END ------------");
+            //Trace.Flush();
+            //Trace.Close();
             #endregion
 
         }
