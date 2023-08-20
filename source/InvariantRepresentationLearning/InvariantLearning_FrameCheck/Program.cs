@@ -40,7 +40,7 @@ namespace InvariantLearning_FrameCheck
         /// Latest Experiment
         /// </summary>
         /// <param name="experimentFolder"></param>
-            private static void TestSemantic_InvariantRepresentation(string experimentFolder)
+        private static void TestSemantic_InvariantRepresentation(string experimentFolder)
         {
             #region Samples taking
             List<Sample> trainingSamples = new List<Sample>();
@@ -559,9 +559,6 @@ namespace InvariantLearning_FrameCheck
             #endregion
 
         }
-
-
-
 
 
 

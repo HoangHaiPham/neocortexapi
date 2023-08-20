@@ -641,8 +641,8 @@ namespace NeoCortexApi.Classifiers
             var maxSimilarityScore = similarityScore.MaxBy(entry => entry.Value);
 
             // filter SDRs which have similarity score >= maxSimilarityScore
-            //double thresholdSimilarityScore = maxSimilarityScore.Value / 2;
-            double thresholdSimilarityScore = 0;
+            double thresholdSimilarityScore = maxSimilarityScore.Value / 2;
+            //double thresholdSimilarityScore = 0;
             var topN_similarity = similarityScore.Where(entry => entry.Value > thresholdSimilarityScore).ToDictionary(pair => pair.Key, pair => pair.Value);
 
             if (maxFeatures > 0)

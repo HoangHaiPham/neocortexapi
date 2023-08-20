@@ -290,6 +290,29 @@ namespace Invariant.Entities
         /// <param name="frame">region to check</param>
         /// <param name="pixelDensiTyThreshold">binarized Threshold</param>
         /// <returns>pixel density</returns>
+        public double HAI_FrameDensity(Frame frame)
+        {
+            var test = this.GetPixels(frame);
+            int whitePixelsCount = 0;
+            for (int y = 0; y < test.GetLength(0); y++)
+            {
+                for (int x = 0; x < test.GetLength(1); x++)
+                {
+                    if (test[x, y, 0] > 0)
+                    {
+                        whitePixelsCount++;
+                    }
+                }
+            }
+            return whitePixelsCount;
+        }
+
+        /// <summary>
+        /// Image's frame Density as binarized white pixels(1) over all pixels(0 and 1) of an image
+        /// </summary>
+        /// <param name="frame">region to check</param>
+        /// <param name="pixelDensiTyThreshold">binarized Threshold</param>
+        /// <returns>pixel density</returns>
         public double FrameDensity(Frame frame, double pixelDensiTyThreshold)
         {
             var test = this.GetPixels(frame);
