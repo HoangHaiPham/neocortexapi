@@ -21,9 +21,9 @@ namespace InvariantLearning_FrameCheck
         // generate 32x32 source MNISTDataSet
         public static int IMAGE_WIDTH = 28;
         public static int IMAGE_HEIGHT = 28;
-        public static int FRAME_WIDTH = 8;
-        public static int FRAME_HEIGHT = 8;
-        public static int PIXEL_SHIFTED = 8;
+        public static int FRAME_WIDTH = 4;
+        public static int FRAME_HEIGHT = 4;
+        public static int PIXEL_SHIFTED = 4;
         public static int MAX_CYCLE = 2;
         public static int NUM_IMAGES_PER_LABEL = 10;
         public static int PER_TESTSET = 20;
@@ -435,20 +435,41 @@ namespace InvariantLearning_FrameCheck
                 testLabel_SDRListIndexes.Add(sample);
             }
 
-            double match = 0;
-            Dictionary<string, List<string>> finalPredict = new Dictionary<string, List<string>>();
+            double loose_match = 0;
+            //Dictionary<string, List<string>> finalPredict = new Dictionary<string, List<string>>();
+            Dictionary<string, Dictionary<string, double>> finalPredict = new Dictionary<string, Dictionary<string, double>>();
+
+            Dictionary<string, double> percentageForEachDigit = new Dictionary<string, double>();
+            string prev_image_name = "";
 
             foreach (var item in testLabel_SDRListIndexes)
             {
-                string key_label = Path.GetFileNameWithoutExtension(item.FramePath);
-                key_label = key_label.Remove(key_label.Length - 2);
+                string key_label = Path.GetFileNameWithoutExtension(item.FramePath).Substring(0, 9);
+                //key_label = key_label.Remove(key_label.Length - 2);
+
                 //string key_label = item.Object;
 
-                //if (!finalPredict.ContainsKey(item.Object))
-                if (!finalPredict.ContainsKey(key_label))
+                //if (!finalPredict.ContainsKey(key_label))
+                //{
+                //    finalPredict.Add(key_label, new List<string>());
+                //}
+
+                if (prev_image_name != key_label)
                 {
-                    finalPredict.Add(key_label, new List<string>());
+                    if (prev_image_name != "")
+                    {
+                        // get percentage of each digit predicted for each image
+                        finalPredict[prev_image_name] = percentageForEachDigit.GroupBy(x => x.Key).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value) / percentageForEachDigit.Sum(x => x.Value), 2));
+                    }
+                    if (!finalPredict.ContainsKey(key_label))
+                    {
+                        percentageForEachDigit = new Dictionary<string, double>();
+                        finalPredict.Add(key_label, percentageForEachDigit);
+                    }
+                    
                 }
+
+                prev_image_name = key_label;
 
                 string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
                 TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
@@ -460,48 +481,81 @@ namespace InvariantLearning_FrameCheck
                 Trace.Flush();
                 Trace.Close();
 
+                if (!percentageForEachDigit.ContainsKey(predictedObj))
+                {
+                    percentageForEachDigit.Add(predictedObj, 0);
+                }
+                percentageForEachDigit[predictedObj] += 1;
+
+
+
+
                 if (predictedObj.Equals(item.Object))
                 {
-                    match++;
+                    loose_match++;
                 }
-
-                finalPredict[key_label].Add(predictedObj);
-
-                Debug.WriteLine("HIHIHIHI");
 
                 //Debug.WriteLine($"Actual {item.Object} - Predicted {predictedObj}");
             }
 
             Debug.WriteLine("HIHIHIHI");
 
-            // count the number of times that label is predicted
-            var hihi = finalPredict.Select(x => x).GroupBy(x => x.Value).ToDictionary(group => group.Key, group => group.ToDictionary(a => a.Key).ToList().Count);
-            //var hihi = finalPredict.Select(x => x).GroupBy(x => x.Key).ToDictionary(group => group.Key, group => group.ToList().Count);
+            // get percentage of each digit predicted for the last testing image when get outside of the loop
+            finalPredict[prev_image_name] = percentageForEachDigit.GroupBy(x => x.Key).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value) / percentageForEachDigit.Sum(x => x.Value), 2));
 
-            //foreach (var f in finalPredict)
-            //{
-            //    for 
-            //}
-            //string key_label_test = "Label_0_0_1";
-            //key_label_test = key_label_test.Remove(key_label_test.Length - 2);
-            Debug.WriteLine("HIHIHIHI");
-
-            // Calculate Accuracy
+            // Calculate Accuracy loose match
             double numOfItems = testLabel_SDRListIndexes.Count();
-            var accuracy = (match / numOfItems) * 100;
+            var loose_accuracy = (loose_match / numOfItems) * 100;
             testingSamples.Clear();
 
             string logResult = Path.Combine(experimentFolder, $"Prediction_Result.log");
             TextWriterTraceListener resultFile = new TextWriterTraceListener(logResult);
             Trace.Listeners.Add(resultFile);
-            foreach (var r in finalPredict)
+
+
+
+            double match = 0;
+            Dictionary<string, string> results = new Dictionary<string, string>();
+            foreach (var p in finalPredict)
             {
-                foreach (var p in r.Value)
+                if (!results.ContainsKey(p.Key))
                 {
-                    Trace.WriteLine($"Actual {r.Key}: Predicted {p}");
+                    results.Add(p.Key, string.Empty);
                 }
+
+                var perMaxDigitPredicted = p.Value.Where(x => x.Value == p.Value.MaxBy(x => x.Value).Value).ToList();
+
+                var checkDigitIsMatched = perMaxDigitPredicted.Where(x => x.Key == p.Key.Split("_")[1]).ToList();
+                string predictedDigit = "";
+                if (checkDigitIsMatched.Count > 0)
+                {
+                    predictedDigit = checkDigitIsMatched.FirstOrDefault().Key.ToString();
+                    match += 1;
+                }
+                else
+                {
+                    predictedDigit = perMaxDigitPredicted.FirstOrDefault().Key.ToString();
+                }
+
+                results[p.Key] = predictedDigit;
+
+                Trace.WriteLine($"Actual {p.Key}: Predicted {predictedDigit}");
+
+                foreach (var w in p.Value)
+                {
+                    Trace.WriteLine($"----Actual {p.Key}: Predicted {w}");
+                }
+
+                Trace.WriteLine($"==========");
             }
-            Trace.WriteLine($"accuracy: {match}/{numOfItems} = {accuracy}%");
+
+            // Calculate Accuracy loose match
+            double numOfSample = finalPredict.Count();
+            var accuracy = (match / numOfSample) * 100;
+            testingSamples.Clear();
+
+            Trace.WriteLine($"loose_accuracy: {loose_match}/{numOfItems} = {loose_accuracy}%");
+            Trace.WriteLine($"accuracy: {match}/{numOfSample} = {accuracy}%");
             Trace.Flush();
             Trace.Close();
 
