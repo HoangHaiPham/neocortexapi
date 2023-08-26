@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ImageEncoder\HtmImageEncoder.csproj" />
+    <ProjectReference Include="..\Cloud_Common\Cloud_Common.csproj" />
     <ProjectReference Include="..\Experiment\Cloud_Experiment.csproj" />
     <ProjectReference Include="..\Invariant.Entities\Invariant.Entities.csproj" />
     <ProjectReference Include="..\..\NeoCortexApi\NeoCortexApi.csproj" />
