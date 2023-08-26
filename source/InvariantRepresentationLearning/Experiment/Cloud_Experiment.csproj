@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cloud_Common\Cloud_Common.csproj" />
+    <ProjectReference Include="..\InvariantLearning_Utilities\InvariantLearning_Utilities.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Damir Dobric. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
 using Invariant.Entities;
+using NeoCortexApi;
+using NeoCortexApi.Classifiers;
 using NeoCortexApi.Entities;
 using NeoCortexApi.Utility;
 using System;
@@ -11,7 +13,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace NeoCortexApi.Classifiers
+namespace InvariantLearning_Utilities
 {
     /// <summary>
     /// Defines the predicting input.

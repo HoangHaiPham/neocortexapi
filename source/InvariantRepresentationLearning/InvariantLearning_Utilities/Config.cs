@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace InvariantLearning_FrameCheck
+namespace InvariantLearning_Utilities
 {
 
     /// <summary>

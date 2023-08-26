@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using Invariant.Entities;
 
-namespace InvariantLearning_FrameCheck
+namespace InvariantLearning_Utilities
 {
     internal class InvariantExperimentImageClassification
     {

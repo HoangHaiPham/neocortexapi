@@ -3,14 +3,10 @@ using NeoCortexApi.Entities;
 using System.Diagnostics;
 using Invariant.Entities;
 using NeoCortexApi.Encoders;
-using NeoCortexApi.Classifiers;
-using System;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using System.Threading;
 using Cloud_Common;
 using Cloud_Experiment;
-
+using InvariantLearning_Utilities;
 
 //using Experiment;
 
@@ -29,8 +25,10 @@ namespace InvariantLearning_FrameCheck
         public static int MAX_CYCLE = 5;
         public static int NUM_IMAGES_PER_LABEL = 10;
         public static int PER_TESTSET = 20;
-        private static string projectName = "ML19/20-5.8 - HoangHaiPham - Validating Memorizing Capabilities of Spatial Pooler";
         private static string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
+        private static string experimentFolder = $"HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}_{experimentTime}";
+        private static string MnistFolderFromBlobStorage = "MnistDataset";
+        private static string outputFolderBlobStorage = "Output";
 
         //public static void Main()
         static void Main(string[] args)
@@ -44,9 +42,7 @@ namespace InvariantLearning_FrameCheck
                 tokeSrc.Cancel();
             };
 
-            Console.WriteLine($"Cloud_HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}_{experimentTime}");
-
-            Console.WriteLine($"Started experiment: {projectName}");
+            Console.WriteLine(experimentFolder);
 
             //init configuration
             var cfgRoot = Cloud_Common.InitHelpers.InitConfiguration(args);
@@ -57,43 +53,38 @@ namespace InvariantLearning_FrameCheck
             var logFactory = InitHelpers.InitLogging(cfgRoot);
             var logger = logFactory.CreateLogger("Train.Console");
 
-            logger?.LogInformation($"{DateTime.Now} -  Started experiment: {projectName}");
+            logger?.LogInformation($"{DateTime.Now} -  Started experiment: {experimentFolder}");
 
             IStorageProvider storageProvider = new AzureStorageProvider(cfgSec);
 
             Experiment experiment = new Experiment(cfgSec, storageProvider, logger/* put some additional config here */);
 
-            experiment.RunQueueListener(tokeSrc.Token).Wait();
+            //experiment.RunQueueListener(experimentFolder, inputFolderBlobStorage, outputFolderBlobStorage, tokeSrc.Token).Wait();
 
-            logger?.LogInformation($"{DateTime.Now} -  Experiment exit: {projectName}");
+            logger?.LogInformation($"{DateTime.Now} -  Experiment exit: {experimentFolder}");
 
             //*** CLOUD ***
 
 
             //string experimentTime = DateTime.UtcNow.ToShortDateString().ToString().Replace('/', '-');
             //Console.WriteLine($"Cloud_HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}_{experimentTime}");
-            //CloudSemantic100x100_InvariantRepresentation($"Cloud_HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle {MAX_CYCLE}_{experimentTime}");
-        
+            CloudSemantic100x100_InvariantRepresentation(experimentFolder, experiment, tokeSrc);
+
         }
 
-
-        /// <summary>
-        /// Latest Experiment
-        /// </summary>
-        /// <param name="experimentFolder"></param>
-        private static void CloudSemantic100x100_InvariantRepresentation(string experimentFolder)
+        private static void PrepareDataset(string experimentFolder, string MnistFolderFromBlobStorage, out List<Sample> trainingSamples, out List<Sample> testingSamples, out DataSet sourceSetBigScale, out DataSet testSetBigScale)
         {
-            List<Sample> trainingSamples = new List<Sample>();
+            trainingSamples = new List<Sample>();
             //List<Sample> trainingBigSamples = new List<Sample>();
-            List<Sample> testingSamples = new List<Sample>();
+            testingSamples = new List<Sample>();
             List<Sample> sourceSamples = new List<Sample>();
 
             Utility.CreateFolderIfNotExist(experimentFolder);
 
             // Get the folder of MNIST archives tar.gz files.
-            string sourceMNIST = Path.Combine(experimentFolder, "MnistSource");
+            string sourceMNIST = Path.Combine(experimentFolder, MnistFolderFromBlobStorage);
             Utility.CreateFolderIfNotExist(sourceMNIST);
-            Mnist.DataGen("MnistDataset", sourceMNIST, NUM_IMAGES_PER_LABEL);
+            Mnist.DataGen(MnistFolderFromBlobStorage, sourceMNIST, NUM_IMAGES_PER_LABEL);
 
             // get images from MNIST set
             DataSet sourceSet = new DataSet(sourceMNIST);
@@ -101,17 +92,28 @@ namespace InvariantLearning_FrameCheck
             // scale the original datasource according IMAGE_WIDTH, IMAGE_HEIGHT
             DataSet sourceSet_scale = DataSet.ScaleSet(experimentFolder, IMAGE_WIDTH, IMAGE_HEIGHT, sourceSet, "sourceSet");
             // put source image into 100x100 image size
-            DataSet sourceSetBigScale = DataSet.CreateTestSet(sourceSet_scale, 100, 100, Path.Combine(experimentFolder, "sourceSetBigScale"));
-
+            sourceSetBigScale = DataSet.CreateTestSet(sourceSet_scale, 100, 100, Path.Combine(experimentFolder, "sourceSetBigScale"));
 
             // get % of sourceSet_scale to be testSet
             DataSet testSet_scale = sourceSet_scale.GetTestData(PER_TESTSET);
 
             // put test image into 100x100 image size
-            DataSet testSetBigScale = DataSet.CreateTestSet(testSet_scale, 100, 100, Path.Combine(experimentFolder, "testSetBigScale"));
-
-
+            testSetBigScale = DataSet.CreateTestSet(testSet_scale, 100, 100, Path.Combine(experimentFolder, "testSetBigScale"));
             Debug.WriteLine("Generating dataset ... ");
+        }
+
+        /// <summary>
+        /// Latest Experiment
+        /// </summary>
+        /// <param name="experimentFolder"></param>
+        private static void CloudSemantic100x100_InvariantRepresentation(string experimentFolder, Experiment experiment, CancellationTokenSource tokeSrc)
+        {
+            List<Sample> trainingSamples, testingSamples;
+            DataSet sourceSetBigScale, testSetBigScale;
+
+            experiment.RunQueueListener(experimentFolder, MnistFolderFromBlobStorage, outputFolderBlobStorage, tokeSrc.Token).Wait();
+
+            PrepareDataset(experimentFolder, out trainingSamples, out testingSamples, out sourceSetBigScale, out testSetBigScale);
 
 
             // Creating the testing images from big scale image.
@@ -125,9 +127,6 @@ namespace InvariantLearning_FrameCheck
                 string trainingImageFolder = Path.Combine(experimentFolder, trainingImageFolderName, $"{img.Label}");
 
                 Utility.CreateFolderIfNotExist(trainingImageFolder);
-
-                //testImage.SaveTo(Path.Combine(testExtractedFrameBigScaleFolder, $"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}_origin.png"));
-
                 Dictionary<Frame, double> whitePixelDensity = new Dictionary<Frame, double>();
                 foreach (var trainImg in listOfTrainingImage)
                 {
@@ -138,8 +137,6 @@ namespace InvariantLearning_FrameCheck
                 // get max whitedensity
                 var maxWhiteDensity_Value = whitePixelDensity.MaxBy(entry => entry.Value).Value;
                 var maxWhiteDensity_Pic = whitePixelDensity.Where(entry => entry.Value == maxWhiteDensity_Value).ToDictionary(pair => pair.Key, pair => pair.Value);
-
-                //foreach (var frameWithMaxWhiteDensity in maxWhiteDensity_Pic.Keys)
                 foreach (var (frameWithMaxWhiteDensity, i) in maxWhiteDensity_Pic.Select((x, i) => (x, i)))
                 {
                     {
@@ -152,12 +149,7 @@ namespace InvariantLearning_FrameCheck
                         }
                     }
                 }
-                //Debug.WriteLine("aaaaaaaaaaaaaaaaaaa");
-
-
             }
-
-
 
 
             Debug.WriteLine("aaaaaaaaaaaaaaaaaaa");
@@ -240,7 +232,7 @@ namespace InvariantLearning_FrameCheck
                 Utility.CreateFolderIfNotExist(testExtractedFrameBigScaleFolder);
 
                 //testImage.SaveTo(Path.Combine(testExtractedFrameBigScaleFolder, $"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}_origin.png"));
-                
+
                 Dictionary<Frame, double> whitePixelDensity = new Dictionary<Frame, double>();
                 foreach (var frameBigScale in listOfFrameBigScale)
                 {
@@ -469,7 +461,7 @@ namespace InvariantLearning_FrameCheck
                         percentageForEachDigit = new Dictionary<string, double>();
                         finalPredict.Add(key_label, percentageForEachDigit);
                     }
-                    
+
                 }
 
                 prev_image_name = key_label;
@@ -563,6 +555,7 @@ namespace InvariantLearning_FrameCheck
             Trace.Close();
 
         }
+
 
 
 

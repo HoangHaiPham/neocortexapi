@@ -17,6 +17,6 @@ namespace Cloud_Common
         /// </summary>
         /// <param name="cancelToken">Token used to cancel the listening process.</param>
         /// <returns></returns>
-        Task RunQueueListener(CancellationToken cancelToken);
+        Task RunQueueListener(string experimentFolder, string inputFolderBlobStorage, string outputFolderBlobStorage, CancellationToken cancelToken);
     }
 }

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="shortid" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ImageEncoder\HtmImageEncoder.csproj" />
+    <ProjectReference Include="..\..\NeoCortexApi\NeoCortexApi.csproj" />
+    <ProjectReference Include="..\..\NeoCortexEntities\NeoCortexEntities.csproj" />
+    <ProjectReference Include="..\Invariant.Entities\Invariant.Entities.csproj" />
+  </ItemGroup>
+
+</Project>

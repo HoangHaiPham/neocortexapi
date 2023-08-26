@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using shortid;
 
-namespace InvariantLearning_FrameCheck
+namespace InvariantLearning_Utilities
 {
     public class Utility
     {

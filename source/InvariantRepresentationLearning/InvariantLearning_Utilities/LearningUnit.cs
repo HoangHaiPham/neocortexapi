@@ -7,7 +7,7 @@ using NeoCortexApi.Classifiers;
 
 using Invariant.Entities;
 
-namespace InvariantLearning_FrameCheck
+namespace InvariantLearning_Utilities
 {
     /// <summary>
     /// <br>Learning Unit is a Combination of Image Encoder, Spatial Pooler and Classifier in one Place</br>

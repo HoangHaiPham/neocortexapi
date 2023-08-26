@@ -1,15 +1,12 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Microsoft.Azure.Storage;
+﻿using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Storage.Blobs;
 using Newtonsoft.Json;
 using Cloud_Common;
-using Cloud_Experiment;
+using Azure.Storage.Blobs.Models;
+using InvariantLearning_Utilities;
 
 namespace Cloud_Experiment
 {
@@ -20,6 +17,7 @@ namespace Cloud_Experiment
         private ILogger logger;
 
         private MyConfig config;
+        private Task GetMnistDataset;
 
         public Experiment(IConfigurationSection configSection, IStorageProvider storageProvider, ILogger log)
         {
@@ -74,10 +72,15 @@ namespace Cloud_Experiment
         //}
 
         /// <inheritdoc/>
-        public async Task RunQueueListener(CancellationToken cancelToken)
+        public async Task RunQueueListener(string experimentFolder, string MnistFolderFromBlobStorage, string outputFolderBlobStorage, CancellationToken cancelToken)
         {
             CloudQueue queue = await CreateQueueAsync(config);
-            BlobContainerClient trainingcontainer = await CreateTrainingContainer(config);
+            BlobContainerClient blobStorageName = await CreateBlobStorage(config);
+
+            //await UploadFolderToBlogStorage(trainingcontainer, inputFolderBlobStorage);
+
+            await GetMnistDatasetFromBlobStorage(blobStorageName);
+
             QueueMessageRequirements();
 
             while (cancelToken.IsCancellationRequested == false)
@@ -92,14 +95,14 @@ namespace Cloud_Experiment
                         Console.WriteLine($"{message.AsString}\n");
                         Console.ResetColor();
 
-                        ////---------------------  READ QUEUE MESSAGE ---------------------------
-                        //ExerimentRequestMessage msg = null;
-                        //InputFileParameters inputFileParameter = null;
-                        //ExperimentResult result = null;
+                        //---------------------  READ QUEUE MESSAGE ---------------------------
+                        ExerimentRequestMessage msg = null;
+                        InputFileParameters inputFileParameter = null;
+                        ExperimentResult result = null;
 
-                        //msg = JsonConvert.DeserializeObject<ExerimentRequestMessage>(message.AsString);
+                        msg = JsonConvert.DeserializeObject<ExerimentRequestMessage>(message.AsString);
 
-                        //Thread.Sleep(10);
+                        Thread.Sleep(10);
 
                         //if (CheckMessageOK(msg))
                         //{
@@ -107,55 +110,55 @@ namespace Cloud_Experiment
                         //    inputFileParameter = await this.storageProvider.DownloadInputFile(msg.InputFile, trainingcontainer);
                         //    //----------------------------------------------------------------------------------------
 
-                        //    if (inputFileParameter != null)
-                        //    {
-                        //        if (CheckInputParamOK(inputFileParameter))
-                        //        {
-                        //            Console.ForegroundColor = ConsoleColor.Yellow;
-                        //            Console.WriteLine($">> EXPERIMENT IS RUNNING ...");
+                            //    if (inputFileParameter != null)
+                            //    {
+                            //        if (CheckInputParamOK(inputFileParameter))
+                            //        {
+                            //            Console.ForegroundColor = ConsoleColor.Yellow;
+                            //            Console.WriteLine($">> EXPERIMENT IS RUNNING ...");
 
-                        //            //------------------------------------RUN EXPERIMENT--------------------------------------
-                        //            result = await this.Run(inputFileParameter, msg);
-                        //            //----------------------------------------------------------------------------------------
+                            //            //------------------------------------RUN EXPERIMENT--------------------------------------
+                            //            result = await this.Run(inputFileParameter, msg);
+                            //            //----------------------------------------------------------------------------------------
 
-                        //            if (result != null)
-                        //            {
-                        //                //---------------------------UPLOAD FILES ONTO BLOB STORAGE-------------------------------
-                        //                await storageProvider.UploadResultFile(result);
-                        //                //----------------------------------------------------------------------------------------
+                            //            if (result != null)
+                            //            {
+                            //                //---------------------------UPLOAD FILES ONTO BLOB STORAGE-------------------------------
+                            //                await storageProvider.UploadResultFile(result);
+                            //                //----------------------------------------------------------------------------------------
 
-                        //                //------------------------UPLOAD RESULT FILES TO TABLE STORAGE----------------------------
-                        //                await storageProvider.UploadExperimentResult(result);
-                        //                //----------------------------------------------------------------------------------------
+                            //                //------------------------UPLOAD RESULT FILES TO TABLE STORAGE----------------------------
+                            //                await storageProvider.UploadExperimentResult(result);
+                            //                //----------------------------------------------------------------------------------------
 
-                        //                Console.ForegroundColor = ConsoleColor.DarkGreen;
-                        //                Console.WriteLine($">> EXPERIMENT FINISHED!!!\n");
-                        //                Console.ResetColor();
-                        //            }
-                        //            else
-                        //            {
-                        //                Console.ForegroundColor = ConsoleColor.DarkRed;
-                        //                Console.WriteLine($">> EXPERIMENT FAILED!!!\n");
-                        //                Console.ResetColor();
-                        //            }
-                        //        }
+                            //                Console.ForegroundColor = ConsoleColor.DarkGreen;
+                            //                Console.WriteLine($">> EXPERIMENT FINISHED!!!\n");
+                            //                Console.ResetColor();
+                            //            }
+                            //            else
+                            //            {
+                            //                Console.ForegroundColor = ConsoleColor.DarkRed;
+                            //                Console.WriteLine($">> EXPERIMENT FAILED!!!\n");
+                            //                Console.ResetColor();
+                            //            }
+                            //        }
 
-                        //        else
-                        //        {
-                        //            Console.ForegroundColor = ConsoleColor.DarkRed;
-                        //            Console.WriteLine($">> Invalid Parameters in InputFile '{msg.InputFile}'.\n");
-                        //            Console.ResetColor();
-                        //        }
-                        //    }
+                            //        else
+                            //        {
+                            //            Console.ForegroundColor = ConsoleColor.DarkRed;
+                            //            Console.WriteLine($">> Invalid Parameters in InputFile '{msg.InputFile}'.\n");
+                            //            Console.ResetColor();
+                            //        }
+                            //    }
 
-                        //    else
-                        //    {
-                        //        Console.ForegroundColor = ConsoleColor.DarkRed;
-                        //        Console.WriteLine($">> Container '{config.TrainingContainer}' does not have InputFile '{msg.InputFile}'.");
-                        //        Console.WriteLine($">> Please upload the InputFile '{msg.InputFile}' onto container '{config.TrainingContainer}'.\n");
-                        //        Console.ResetColor();
-                        //    }
-                        //}
+                            //    else
+                            //    {
+                            //        Console.ForegroundColor = ConsoleColor.DarkRed;
+                            //        Console.WriteLine($">> Container '{config.TrainingContainer}' does not have InputFile '{msg.InputFile}'.");
+                            //        Console.WriteLine($">> Please upload the InputFile '{msg.InputFile}' onto container '{config.TrainingContainer}'.\n");
+                            //        Console.ResetColor();
+                            //    }
+                            //}
                         //else
                         //{
                         //    Console.ForegroundColor = ConsoleColor.DarkRed;
@@ -196,6 +199,50 @@ namespace Cloud_Experiment
             }
 
             this.logger?.LogInformation(">> Cancel pressed. Exiting the listener loop.");
+        }
+
+        private async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName)
+        {
+            await foreach (BlobItem blobInfo in blobStorageName.GetBlobsAsync())
+            {
+                BlobClient blobClient = blobStorageName.GetBlobClient(blobInfo.Name);
+
+                Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
+
+                // Download the blob's contents and save it to a file
+                if (!File.Exists(blobInfo.Name))
+                {
+                    Console.WriteLine("\t" + blobInfo.Name);
+
+                    using (var fileStream = System.IO.File.OpenWrite(blobInfo.Name))
+                    {
+                        await blobClient.DownloadToAsync(fileStream);
+                    }
+
+                }
+            }
+        }
+
+        private async Task UploadFolderToBlogStorage(BlobContainerClient blobStorageName, string local_cloudExperimentInputFolder)
+        {
+            // TODO loop through folder return fileName
+            foreach(var name in Directory.GetFiles(local_cloudExperimentInputFolder))
+            {
+                await UploadFileToBlobStorage(blobStorageName, local_cloudExperimentInputFolder, Path.GetFileName(name));
+            }
+        }
+
+        private async Task UploadFileToBlobStorage(BlobContainerClient blobStorageName, string local_cloudExperimentInputFolder, string fileName)
+        {
+            // TODO logic for uploading input files to created blob container
+            // Get a reference to a blob
+            BlobClient blobClient = blobStorageName.GetBlobClient(Path.Combine(local_cloudExperimentInputFolder, fileName));
+
+            Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
+
+            // Upload data from the local file
+            await blobClient.UploadAsync(Path.Combine(local_cloudExperimentInputFolder, fileName), true);
+
         }
 
 
@@ -308,8 +355,9 @@ namespace Cloud_Experiment
             return queue;
         }
 
-        private static async Task<BlobContainerClient> CreateTrainingContainer(MyConfig config)
+        private static async Task<BlobContainerClient> CreateBlobStorage(MyConfig config)
         {
+            // TODO created blob storage
             BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
 
             BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.TrainingContainer);
