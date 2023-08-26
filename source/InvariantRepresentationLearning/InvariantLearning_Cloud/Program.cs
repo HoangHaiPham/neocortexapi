@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Cloud_Common;
 using Cloud_Experiment;
 using InvariantLearning_Utilities;
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.Configuration;
 
 //using Experiment;
 
@@ -31,7 +33,7 @@ namespace InvariantLearning_FrameCheck
         private static string outputFolderBlobStorage = "Output";
 
         //public static void Main()
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             ////*** CLOUD ***
             CancellationTokenSource tokeSrc = new CancellationTokenSource();
@@ -48,6 +50,8 @@ namespace InvariantLearning_FrameCheck
             var cfgRoot = Cloud_Common.InitHelpers.InitConfiguration(args);
 
             var cfgSec = cfgRoot.GetSection("MyConfig");
+            var config = new MyConfig();
+            cfgSec.Bind(config);
 
             // InitLogging
             var logFactory = InitHelpers.InitLogging(cfgRoot);
@@ -57,7 +61,7 @@ namespace InvariantLearning_FrameCheck
 
             IStorageProvider storageProvider = new AzureStorageProvider(cfgSec);
 
-            Experiment experiment = new Experiment(cfgSec, storageProvider, logger/* put some additional config here */);
+            Experiment experiment = new Experiment(config, storageProvider, logger/* put some additional config here */);
 
             //experiment.RunQueueListener(experimentFolder, inputFolderBlobStorage, outputFolderBlobStorage, tokeSrc.Token).Wait();
 
@@ -68,14 +72,26 @@ namespace InvariantLearning_FrameCheck
 
             //string experimentTime = DateTime.UtcNow.ToShortDateString().ToString().Replace('/', '-');
             //Console.WriteLine($"Cloud_HtmInvariantLearning_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}_{experimentTime}");
-            CloudSemantic100x100_InvariantRepresentation(experimentFolder, experiment, tokeSrc);
+            await CloudSemantic100x100_InvariantRepresentation(experimentFolder, experiment, tokeSrc, config);
 
         }
 
-        private static void PrepareDataset(string experimentFolder, string MnistFolderFromBlobStorage, out List<Sample> trainingSamples, out List<Sample> testingSamples, out DataSet sourceSetBigScale, out DataSet testSetBigScale)
+
+        /// <summary>
+        /// Latest Experiment
+        /// </summary>
+        /// <param name="experimentFolder"></param>
+        private static async Task CloudSemantic100x100_InvariantRepresentation(string experimentFolder, Experiment experiment, CancellationTokenSource tokeSrc, MyConfig config)
         {
+            
+
+            BlobContainerClient blobStorageName = await AzureStorageProvider.CreateBlobStorage(config);
+
+            experiment.RunQueueListener(experimentFolder, MnistFolderFromBlobStorage, outputFolderBlobStorage, blobStorageName, tokeSrc.Token).Wait();
+
+            List<Sample> trainingSamples, testingSamples;
+            DataSet sourceSetBigScale, testSetBigScale;
             trainingSamples = new List<Sample>();
-            //List<Sample> trainingBigSamples = new List<Sample>();
             testingSamples = new List<Sample>();
             List<Sample> sourceSamples = new List<Sample>();
 
@@ -100,21 +116,6 @@ namespace InvariantLearning_FrameCheck
             // put test image into 100x100 image size
             testSetBigScale = DataSet.CreateTestSet(testSet_scale, 100, 100, Path.Combine(experimentFolder, "testSetBigScale"));
             Debug.WriteLine("Generating dataset ... ");
-        }
-
-        /// <summary>
-        /// Latest Experiment
-        /// </summary>
-        /// <param name="experimentFolder"></param>
-        private static void CloudSemantic100x100_InvariantRepresentation(string experimentFolder, Experiment experiment, CancellationTokenSource tokeSrc)
-        {
-            List<Sample> trainingSamples, testingSamples;
-            DataSet sourceSetBigScale, testSetBigScale;
-
-            experiment.RunQueueListener(experimentFolder, MnistFolderFromBlobStorage, outputFolderBlobStorage, tokeSrc.Token).Wait();
-
-            PrepareDataset(experimentFolder, out trainingSamples, out testingSamples, out sourceSetBigScale, out testSetBigScale);
-
 
             // Creating the testing images from big scale image.
             var trainingImageFolderName = "TraingImageFolder";
@@ -150,6 +151,10 @@ namespace InvariantLearning_FrameCheck
                     }
                 }
             }
+
+            // TODO upload trainingImageFolder to Blob Storage
+            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImageFolderName));
+
 
 
             Debug.WriteLine("aaaaaaaaaaaaaaaaaaa");
@@ -258,6 +263,10 @@ namespace InvariantLearning_FrameCheck
                     }
                 }
             }
+
+            // TODO upload testSetBigScaleFolder to Blob Storage
+            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScaleFolder));
+
 
 
             Debug.WriteLine("aaaaaaaaaaaaaaaaaaa");
@@ -492,6 +501,10 @@ namespace InvariantLearning_FrameCheck
 
                 //Debug.WriteLine($"Actual {item.Object} - Predicted {predictedObj}");
             }
+
+            //TODO upload testingFolderName to Blob Storage
+            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testingFolderName));
+
 
             Debug.WriteLine("HIHIHIHI");
 

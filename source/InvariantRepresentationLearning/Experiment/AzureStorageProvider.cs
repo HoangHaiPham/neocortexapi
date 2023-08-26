@@ -1,14 +1,10 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Azure.Storage.Blobs;
+﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Cloud_Common;
-using Cloud_Experiment;
+using AzureStorageCloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
 namespace Cloud_Experiment
 {
@@ -127,6 +123,56 @@ namespace Cloud_Experiment
             }
         }
 
+        public static async Task UploadFolderToBlogStorage(BlobContainerClient blobStorageName, string outputFolderBlobStorage, string localFolder)
+        {
+            var files = Directory.GetFiles(localFolder, "*.*", SearchOption.AllDirectories);
+            foreach (var localFilePath in files)
+            {
+                await UploadFileToBlobStorage(blobStorageName, outputFolderBlobStorage, localFilePath);
+            }
+        }
+
+        public static async Task UploadFileToBlobStorage(BlobContainerClient blobStorageName, string cloudExperimentOutputFolder, string localFilePath)
+        {
+            // Get a reference to a blob
+            BlobClient blobClient = blobStorageName.GetBlobClient(Path.Combine(cloudExperimentOutputFolder, localFilePath));
+
+            Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
+
+            // Upload data from the local file
+            await blobClient.UploadAsync(localFilePath, true);
+
+        }
+
+
+        public static async Task<BlobContainerClient> CreateBlobStorage(MyConfig config)
+        {
+            // TODO created blob storage
+            BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
+
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.TrainingContainer);
+            try
+            {
+                bool isExist = containerClient.Exists();
+                if (!isExist)
+                {
+                    await containerClient.CreateIfNotExistsAsync();
+                    Console.WriteLine($">> Training Container '{config.TrainingContainer}' created!");
+                }
+                else
+                {
+                    Console.WriteLine($">> Training Container '{config.TrainingContainer}' already exists!");
+                }
+                Console.WriteLine($">> Waiting for Queue Message ...");
+            }
+            catch
+            {
+                Console.WriteLine($">> Training Container {config.TrainingContainer} cannot be accessed.\n");
+                throw new NotImplementedException();
+            }
+            return containerClient;
+        }
+
         public static async Task<ExperimentResult> InsertOrMergeEntityAsync(CloudTable table, ExperimentResult result)
         {
             if (result == null)
@@ -158,6 +204,63 @@ namespace Cloud_Experiment
             }
         }
 
+
+        /// <summary>
+        /// Validate the connection string information in app.config and throws an exception if it looks like 
+        /// the user hasn't updated this to valid values. 
+        /// </summary>
+        /// <param name="storageConnectionString">The storage connection string</param>
+        /// <returns>CloudStorageAccount object</returns>
+        public static CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
+        {
+            CloudStorageAccount storageAccount;
+            try
+            {
+                storageAccount = CloudStorageAccount.Parse(storageConnectionString);
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the application.");
+                throw;
+            }
+            catch (ArgumentException)
+            {
+                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
+                Console.ReadLine();
+                throw;
+            }
+
+            return storageAccount;
+        }
+
+        /// <summary>
+        /// Validate the connection string information in app.config and throws an exception if it looks like 
+        /// the user hasn't updated this to valid values. 
+        /// </summary>
+        /// <param name="storageConnectionString">The storage connection string</param>
+        /// <returns>CloudStorageAccount object</returns>
+        public static AzureStorageCloudStorageAccount CreateAzureStorageAccountFromConnectionString(string storageConnectionString)
+        {
+            AzureStorageCloudStorageAccount storageAccount;
+            try
+            {
+                storageAccount = AzureStorageCloudStorageAccount.Parse(storageConnectionString);
+            }
+            catch (FormatException)
+            {
+                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the application.");
+                throw;
+            }
+            catch (ArgumentException)
+            {
+                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
+                Console.ReadLine();
+                throw;
+            }
+
+            return storageAccount;
+        }
+
         public async Task<CloudTable> CreateTableAsync(string tableName)
         {
             string storageConnectionString = config.StorageConnectionString;
@@ -181,54 +284,5 @@ namespace Cloud_Experiment
             return table;
         }
 
-        /// <summary>
-        /// Validate the connection string information in app.config and throws an exception if it looks like 
-        /// the user hasn't updated this to valid values. 
-        /// </summary>
-        /// <param name="storageConnectionString">The storage connection string</param>
-        /// <returns>CloudStorageAccount object</returns>
-        private static CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
-        {
-            CloudStorageAccount storageAccount;
-            try
-            {
-                storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            }
-            catch (FormatException)
-            {
-                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the application.");
-                throw;
-            }
-            catch (ArgumentException)
-            {
-                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
-                Console.ReadLine();
-                throw;
-            }
-
-            return storageAccount;
-        }
-
-        //private async Task InitStorageAccount(string storageConnectionString)
-        //{
-        //    CloudStorageAccount storageAccount;
-        //    try
-        //    {
-        //        storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-        //    }
-        //    catch (FormatException)
-        //    {
-        //        Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the application.");
-        //        throw;
-        //    }
-        //    catch (ArgumentException)
-        //    {
-        //        Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
-        //        Console.ReadLine();
-        //        throw;
-        //    }
-
-        //    return storageAccount;
-        //}
     }
 }

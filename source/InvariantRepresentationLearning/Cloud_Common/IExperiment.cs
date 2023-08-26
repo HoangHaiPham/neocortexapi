@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using Azure.Storage.Blobs;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Cloud_Common
@@ -17,6 +18,6 @@ namespace Cloud_Common
         /// </summary>
         /// <param name="cancelToken">Token used to cancel the listening process.</param>
         /// <returns></returns>
-        Task RunQueueListener(string experimentFolder, string inputFolderBlobStorage, string outputFolderBlobStorage, CancellationToken cancelToken);
+        Task RunQueueListener(string experimentFolder, string inputFolderBlobStorage, string outputFolderBlobStorage, BlobContainerClient blobStorageName, CancellationToken cancelToken);
     }
 }

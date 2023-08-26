@@ -4,8 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Azure.Storage.Blobs;
 using Newtonsoft.Json;
-using Cloud_Common;
 using Azure.Storage.Blobs.Models;
+using Cloud_Common;
 using InvariantLearning_Utilities;
 
 namespace Cloud_Experiment
@@ -19,14 +19,12 @@ namespace Cloud_Experiment
         private MyConfig config;
         private Task GetMnistDataset;
 
-        public Experiment(IConfigurationSection configSection, IStorageProvider storageProvider, ILogger log)
+        public Experiment(MyConfig config, IStorageProvider storageProvider, ILogger log)
         {
             //this.storageProvider = storageProvider;
             this.storageProvider = (AzureStorageProvider)storageProvider;
+            this.config = config;
             this.logger = log;
-
-            config = new MyConfig();
-            configSection.Bind(config);
         }
 
 
@@ -72,131 +70,129 @@ namespace Cloud_Experiment
         //}
 
         /// <inheritdoc/>
-        public async Task RunQueueListener(string experimentFolder, string MnistFolderFromBlobStorage, string outputFolderBlobStorage, CancellationToken cancelToken)
+        public async Task RunQueueListener(string experimentFolder, string MnistFolderFromBlobStorage, string outputFolderBlobStorage, BlobContainerClient blobStorageName, CancellationToken cancelToken)
         {
             CloudQueue queue = await CreateQueueAsync(config);
-            BlobContainerClient blobStorageName = await CreateBlobStorage(config);
-
-            //await UploadFolderToBlogStorage(trainingcontainer, inputFolderBlobStorage);
+            //BlobContainerClient blobStorageName = await AzureStorageProvider.CreateBlobStorage(config);
 
             await GetMnistDatasetFromBlobStorage(blobStorageName);
 
             QueueMessageRequirements();
 
-            while (cancelToken.IsCancellationRequested == false)
-            {
-                CloudQueueMessage message = await queue.GetMessageAsync();
-                if (message != null)
-                {
-                    try
-                    {
-                        Console.ForegroundColor = ConsoleColor.Cyan;
-                        Console.WriteLine($">> Receiving the Queue Message:");
-                        Console.WriteLine($"{message.AsString}\n");
-                        Console.ResetColor();
+            //while (cancelToken.IsCancellationRequested == false)
+            //{
+            //    CloudQueueMessage message = await queue.GetMessageAsync();
+            //    if (message != null)
+            //    {
+            //        try
+            //        {
+            //            Console.ForegroundColor = ConsoleColor.Cyan;
+            //            Console.WriteLine($">> Receiving the Queue Message:");
+            //            Console.WriteLine($"{message.AsString}\n");
+            //            Console.ResetColor();
 
-                        //---------------------  READ QUEUE MESSAGE ---------------------------
-                        ExerimentRequestMessage msg = null;
-                        InputFileParameters inputFileParameter = null;
-                        ExperimentResult result = null;
+            //            //---------------------  READ QUEUE MESSAGE ---------------------------
+            //            ExerimentRequestMessage msg = null;
+            //            InputFileParameters inputFileParameter = null;
+            //            ExperimentResult result = null;
 
-                        msg = JsonConvert.DeserializeObject<ExerimentRequestMessage>(message.AsString);
+            //            msg = JsonConvert.DeserializeObject<ExerimentRequestMessage>(message.AsString);
 
-                        Thread.Sleep(10);
+            //            Thread.Sleep(10);
 
-                        //if (CheckMessageOK(msg))
-                        //{
-                        //    //---------------------------DOWNLOAD FILE FROM BLOB STORAGE------------------------------
-                        //    inputFileParameter = await this.storageProvider.DownloadInputFile(msg.InputFile, trainingcontainer);
-                        //    //----------------------------------------------------------------------------------------
+            //            //if (CheckMessageOK(msg))
+            //            //{
+            //            //    //---------------------------DOWNLOAD FILE FROM BLOB STORAGE------------------------------
+            //            //    inputFileParameter = await this.storageProvider.DownloadInputFile(msg.InputFile, trainingcontainer);
+            //            //    //----------------------------------------------------------------------------------------
 
-                            //    if (inputFileParameter != null)
-                            //    {
-                            //        if (CheckInputParamOK(inputFileParameter))
-                            //        {
-                            //            Console.ForegroundColor = ConsoleColor.Yellow;
-                            //            Console.WriteLine($">> EXPERIMENT IS RUNNING ...");
+            //            //    if (inputFileParameter != null)
+            //            //    {
+            //            //        if (CheckInputParamOK(inputFileParameter))
+            //            //        {
+            //            //            Console.ForegroundColor = ConsoleColor.Yellow;
+            //            //            Console.WriteLine($">> EXPERIMENT IS RUNNING ...");
 
-                            //            //------------------------------------RUN EXPERIMENT--------------------------------------
-                            //            result = await this.Run(inputFileParameter, msg);
-                            //            //----------------------------------------------------------------------------------------
+            //            //            //------------------------------------RUN EXPERIMENT--------------------------------------
+            //            //            result = await this.Run(inputFileParameter, msg);
+            //            //            //----------------------------------------------------------------------------------------
 
-                            //            if (result != null)
-                            //            {
-                            //                //---------------------------UPLOAD FILES ONTO BLOB STORAGE-------------------------------
-                            //                await storageProvider.UploadResultFile(result);
-                            //                //----------------------------------------------------------------------------------------
+            //            //            if (result != null)
+            //            //            {
+            //            //                //---------------------------UPLOAD FILES ONTO BLOB STORAGE-------------------------------
+            //            //                await storageProvider.UploadResultFile(result);
+            //            //                //----------------------------------------------------------------------------------------
 
-                            //                //------------------------UPLOAD RESULT FILES TO TABLE STORAGE----------------------------
-                            //                await storageProvider.UploadExperimentResult(result);
-                            //                //----------------------------------------------------------------------------------------
+            //            //                //------------------------UPLOAD RESULT FILES TO TABLE STORAGE----------------------------
+            //            //                await storageProvider.UploadExperimentResult(result);
+            //            //                //----------------------------------------------------------------------------------------
 
-                            //                Console.ForegroundColor = ConsoleColor.DarkGreen;
-                            //                Console.WriteLine($">> EXPERIMENT FINISHED!!!\n");
-                            //                Console.ResetColor();
-                            //            }
-                            //            else
-                            //            {
-                            //                Console.ForegroundColor = ConsoleColor.DarkRed;
-                            //                Console.WriteLine($">> EXPERIMENT FAILED!!!\n");
-                            //                Console.ResetColor();
-                            //            }
-                            //        }
+            //            //                Console.ForegroundColor = ConsoleColor.DarkGreen;
+            //            //                Console.WriteLine($">> EXPERIMENT FINISHED!!!\n");
+            //            //                Console.ResetColor();
+            //            //            }
+            //            //            else
+            //            //            {
+            //            //                Console.ForegroundColor = ConsoleColor.DarkRed;
+            //            //                Console.WriteLine($">> EXPERIMENT FAILED!!!\n");
+            //            //                Console.ResetColor();
+            //            //            }
+            //            //        }
 
-                            //        else
-                            //        {
-                            //            Console.ForegroundColor = ConsoleColor.DarkRed;
-                            //            Console.WriteLine($">> Invalid Parameters in InputFile '{msg.InputFile}'.\n");
-                            //            Console.ResetColor();
-                            //        }
-                            //    }
+            //            //        else
+            //            //        {
+            //            //            Console.ForegroundColor = ConsoleColor.DarkRed;
+            //            //            Console.WriteLine($">> Invalid Parameters in InputFile '{msg.InputFile}'.\n");
+            //            //            Console.ResetColor();
+            //            //        }
+            //            //    }
 
-                            //    else
-                            //    {
-                            //        Console.ForegroundColor = ConsoleColor.DarkRed;
-                            //        Console.WriteLine($">> Container '{config.TrainingContainer}' does not have InputFile '{msg.InputFile}'.");
-                            //        Console.WriteLine($">> Please upload the InputFile '{msg.InputFile}' onto container '{config.TrainingContainer}'.\n");
-                            //        Console.ResetColor();
-                            //    }
-                            //}
-                        //else
-                        //{
-                        //    Console.ForegroundColor = ConsoleColor.DarkRed;
-                        //    Console.WriteLine($">> Invalid input Queue Message.\n");
-                        //    Console.ResetColor();
-                        //}
+            //            //    else
+            //            //    {
+            //            //        Console.ForegroundColor = ConsoleColor.DarkRed;
+            //            //        Console.WriteLine($">> Container '{config.TrainingContainer}' does not have InputFile '{msg.InputFile}'.");
+            //            //        Console.WriteLine($">> Please upload the InputFile '{msg.InputFile}' onto container '{config.TrainingContainer}'.\n");
+            //            //        Console.ResetColor();
+            //            //    }
+            //            //}
+            //            //else
+            //            //{
+            //            //    Console.ForegroundColor = ConsoleColor.DarkRed;
+            //            //    Console.WriteLine($">> Invalid input Queue Message.\n");
+            //            //    Console.ResetColor();
+            //            //}
 
-                        //---------------------- DELETE QUEUE MESSAGE ---------------------------
-                        await queue.DeleteMessageAsync(message);
-                        //-----------------------------------------------------------------------
+            //            //---------------------- DELETE QUEUE MESSAGE ---------------------------
+            //            await queue.DeleteMessageAsync(message);
+            //            //-----------------------------------------------------------------------
 
-                        Console.WriteLine($">> Queue Message was deleted.");
-                        Console.WriteLine($"=====================================================================================================================");
-                        Console.WriteLine($">> Waiting for Queue Message ...");
-                        QueueMessageRequirements();
-                    }
+            //            Console.WriteLine($">> Queue Message was deleted.");
+            //            Console.WriteLine($"=====================================================================================================================");
+            //            Console.WriteLine($">> Waiting for Queue Message ...");
+            //            QueueMessageRequirements();
+            //        }
 
-                    catch (Exception ex)
-                    {
-                        this.logger?.LogError(ex, ">> Queue Message Error ...");
-                        Thread.Sleep(10);
-                        Console.ForegroundColor = ConsoleColor.DarkRed;
-                        Console.WriteLine($"\n>> Invalid input Queue Message.");
-                        Console.ResetColor();
+            //        catch (Exception ex)
+            //        {
+            //            this.logger?.LogError(ex, ">> Queue Message Error ...");
+            //            Thread.Sleep(10);
+            //            Console.ForegroundColor = ConsoleColor.DarkRed;
+            //            Console.WriteLine($"\n>> Invalid input Queue Message.");
+            //            Console.ResetColor();
 
-                        //---------------------- DELETE QUEUE MESSAGE ---------------------------
-                        await queue.DeleteMessageAsync(message);
-                        //-----------------------------------------------------------------------
+            //            //---------------------- DELETE QUEUE MESSAGE ---------------------------
+            //            await queue.DeleteMessageAsync(message);
+            //            //-----------------------------------------------------------------------
 
-                        Console.WriteLine($"\n>> Queue Message was deleted.");
-                        Console.WriteLine($"=====================================================================================================================");
-                        Console.WriteLine($">> Waiting for Queue Message ...");
-                        QueueMessageRequirements();
-                    }
-                }
-                else
-                    await Task.Delay(500);
-            }
+            //            Console.WriteLine($"\n>> Queue Message was deleted.");
+            //            Console.WriteLine($"=====================================================================================================================");
+            //            Console.WriteLine($">> Waiting for Queue Message ...");
+            //            QueueMessageRequirements();
+            //        }
+            //    }
+            //    else
+            //        await Task.Delay(500);
+            //}
 
             this.logger?.LogInformation(">> Cancel pressed. Exiting the listener loop.");
         }
@@ -209,7 +205,7 @@ namespace Cloud_Experiment
 
                 Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
 
-                // Download the blob's contents and save it to a file
+                // Download the blob's contents and save it
                 if (!File.Exists(blobInfo.Name))
                 {
                     Console.WriteLine("\t" + blobInfo.Name);
@@ -222,29 +218,6 @@ namespace Cloud_Experiment
                 }
             }
         }
-
-        private async Task UploadFolderToBlogStorage(BlobContainerClient blobStorageName, string local_cloudExperimentInputFolder)
-        {
-            // TODO loop through folder return fileName
-            foreach(var name in Directory.GetFiles(local_cloudExperimentInputFolder))
-            {
-                await UploadFileToBlobStorage(blobStorageName, local_cloudExperimentInputFolder, Path.GetFileName(name));
-            }
-        }
-
-        private async Task UploadFileToBlobStorage(BlobContainerClient blobStorageName, string local_cloudExperimentInputFolder, string fileName)
-        {
-            // TODO logic for uploading input files to created blob container
-            // Get a reference to a blob
-            BlobClient blobClient = blobStorageName.GetBlobClient(Path.Combine(local_cloudExperimentInputFolder, fileName));
-
-            Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
-
-            // Upload data from the local file
-            await blobClient.UploadAsync(Path.Combine(local_cloudExperimentInputFolder, fileName), true);
-
-        }
-
 
         #region Private Methods
 
@@ -274,7 +247,6 @@ namespace Cloud_Experiment
             Console.ResetColor();
         }
 
-
         private bool CheckMessageOK(ExerimentRequestMessage msg)
         {
             bool valid;
@@ -290,37 +262,6 @@ namespace Cloud_Experiment
             return valid;
         }
 
-
-        /// <summary>
-        /// Validate the connection string information in app.config and throws an exception if it looks like 
-        /// the user hasn't updated this to valid values. 
-        /// </summary>
-        /// <param name="storageConnectionString">The storage connection string</param>
-        /// <returns>CloudStorageAccount object</returns>
-        private static CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
-        {
-            CloudStorageAccount storageAccount;
-            try
-            {
-                storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-                Console.WriteLine($">> Cloud Storage Account created!");
-            }
-            catch (FormatException)
-            {
-                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
-                Console.ReadLine();
-                throw;
-            }
-            catch (ArgumentException)
-            {
-                Console.WriteLine(">> Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
-                Console.ReadLine();
-                throw;
-            }
-
-            return storageAccount;
-        }
-
         /// <summary>
         /// Create a queue for the sample application to process messages in. 
         /// </summary>
@@ -328,7 +269,7 @@ namespace Cloud_Experiment
         private static async Task<CloudQueue> CreateQueueAsync(MyConfig config)
         {
             // Retrieve storage account information from connection string.
-            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString(config.StorageConnectionString);
+            CloudStorageAccount storageAccount = AzureStorageProvider.CreateAzureStorageAccountFromConnectionString(config.StorageConnectionString);
 
             // Create a queue client for interacting with the queue service
             CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
@@ -355,33 +296,6 @@ namespace Cloud_Experiment
             return queue;
         }
 
-        private static async Task<BlobContainerClient> CreateBlobStorage(MyConfig config)
-        {
-            // TODO created blob storage
-            BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
-
-            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.TrainingContainer);
-            try
-            {
-                bool isExist = containerClient.Exists();
-                if (!isExist)
-                {
-                    await containerClient.CreateIfNotExistsAsync();
-                    Console.WriteLine($">> Training Container '{config.TrainingContainer}' created!");
-                }
-                else
-                {
-                    Console.WriteLine($">> Training Container '{config.TrainingContainer}' already exists!");
-                }
-                Console.WriteLine($">> Waiting for Queue Message ...");
-            }
-            catch
-            {
-                Console.WriteLine($">> Training Container {config.TrainingContainer} cannot be accessed.\n");
-                throw new NotImplementedException();
-            }
-            return containerClient;
-        }
         #endregion
     }
 }
