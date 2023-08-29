@@ -11,9 +11,9 @@ namespace Cloud_Common
         /// <param name="fileName">The name of the local file where the input is downloaded.</param>
         /// <returns></returns>
 
-        Task<InputFileParameters> DownloadInputFile(string fileName, BlobContainerClient trainingcontainer);
+        //Task<InputFileParameters> DownloadInputFile(string fileName, BlobContainerClient trainingcontainer);
 
-        Task UploadResultFile(ExperimentResult result);
+        //Task UploadResultFile(ExperimentResult result);
 
         Task UploadExperimentResult(ExperimentResult result);
 

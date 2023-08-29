@@ -2,9 +2,9 @@
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using Cloud_Common;
 using AzureStorageCloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
+using InvariantLearning_Utilities;
 
 namespace Cloud_Experiment
 {
@@ -18,78 +18,78 @@ namespace Cloud_Experiment
             configSection.Bind(config);
         }
 
-        public async Task<InputFileParameters> DownloadInputFile(string fileName, BlobContainerClient trainingcontainer)
-        {
-            string path = $"{Directory.GetCurrentDirectory()}\\SPMemoCapaResult\\Download";
-            Directory.CreateDirectory(path);
-            string downloadFilePath = $"{path}\\{fileName}";
+        //public async Task<InputFileParameters> DownloadInputFile(string fileName, BlobContainerClient trainingcontainer)
+        //{
+        //    string path = $"{Directory.GetCurrentDirectory()}\\SPMemoCapaResult\\Download";
+        //    Directory.CreateDirectory(path);
+        //    string downloadFilePath = $"{path}\\{fileName}";
 
-            // Get a reference to a blob
-            BlobClient blobClient = trainingcontainer.GetBlobClient(fileName);
+        //    // Get a reference to a blob
+        //    BlobClient blobClient = trainingcontainer.GetBlobClient(fileName);
 
-            // List all blobs in the containe
-            List<String> fileNameInBlob = new List<String>();
-            await foreach (BlobItem blobItem in trainingcontainer.GetBlobsAsync())
-            {
-                fileNameInBlob.Add(blobItem.Name);
-            }
+        //    // List all blobs in the containe
+        //    List<String> fileNameInBlob = new List<String>();
+        //    await foreach (BlobItem blobItem in trainingcontainer.GetBlobsAsync())
+        //    {
+        //        fileNameInBlob.Add(blobItem.Name);
+        //    }
 
 
-            if (fileNameInBlob.Contains(fileName))
-            {
-                // Download the blob's contents and save it to a file
-                BlobDownloadInfo download = await blobClient.DownloadAsync();
+        //    if (fileNameInBlob.Contains(fileName))
+        //    {
+        //        // Download the blob's contents and save it to a file
+        //        BlobDownloadInfo download = await blobClient.DownloadAsync();
 
-                using (FileStream downloadFileStream = File.OpenWrite(downloadFilePath))
-                {
-                    await download.Content.CopyToAsync(downloadFileStream);
-                    downloadFileStream.Close();
-                }
+        //        using (FileStream downloadFileStream = File.OpenWrite(downloadFilePath))
+        //        {
+        //            await download.Content.CopyToAsync(downloadFileStream);
+        //            downloadFileStream.Close();
+        //        }
 
-                // Get parameters from InputFile
-                string jsonText = File.ReadAllText(downloadFilePath);
+        //        // Get parameters from InputFile
+        //        string jsonText = File.ReadAllText(downloadFilePath);
 
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($">> Content of InputFile '{fileName}':");
-                Console.WriteLine($"{jsonText}\n");
-                Console.ResetColor();
+        //        Console.ForegroundColor = ConsoleColor.Cyan;
+        //        Console.WriteLine($">> Content of InputFile '{fileName}':");
+        //        Console.WriteLine($"{jsonText}\n");
+        //        Console.ResetColor();
 
-                InputFileParameters parameters = JsonConvert.DeserializeObject<InputFileParameters>(jsonText);
+        //        InputFileParameters parameters = JsonConvert.DeserializeObject<InputFileParameters>(jsonText);
 
-                //File.Delete(downloadFilePath);
-                Directory.Delete(path, true);
+        //        //File.Delete(downloadFilePath);
+        //        Directory.Delete(path, true);
 
-                return parameters;
-            }
+        //        return parameters;
+        //    }
 
-            else
-            {
-                return null;
-            }
-        }
+        //    else
+        //    {
+        //        return null;
+        //    }
+        //}
 
-        public async Task UploadResultFile(ExperimentResult result)
-        {
-            // Create a BlobServiceClient object which will be used to create a container client
-            BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
+        //public async Task UploadResultFile(ExperimentResult result)
+        //{
+        //    // Create a BlobServiceClient object which will be used to create a container client
+        //    BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
 
-            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.ResultContainer);
-            try
-            {
-                await containerClient.CreateIfNotExistsAsync();
-            }
-            catch
-            {
-                Console.WriteLine($">> Conatiner {config.ResultContainer} cannot be accessed.\n");
-                throw new NotImplementedException();
-            }
+        //    BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.ResultContainer);
+        //    try
+        //    {
+        //        await containerClient.CreateIfNotExistsAsync();
+        //    }
+        //    catch
+        //    {
+        //        Console.WriteLine($">> Conatiner {config.ResultContainer} cannot be accessed.\n");
+        //        throw new NotImplementedException();
+        //    }
 
-            UploadFile(containerClient, result.FilePathscalarEncoder);
-            UploadFile(containerClient, result.FilePathFreshArray);
-            UploadFile(containerClient, result.FilePathDiffArray);
-            UploadFile(containerClient, result.FilePathHammingOutput);
-            UploadFile(containerClient, result.FilePathHammingBitmap);
-        }
+        //    UploadFile(containerClient, result.FilePathscalarEncoder);
+        //    UploadFile(containerClient, result.FilePathFreshArray);
+        //    UploadFile(containerClient, result.FilePathDiffArray);
+        //    UploadFile(containerClient, result.FilePathHammingOutput);
+        //    UploadFile(containerClient, result.FilePathHammingBitmap);
+        //}
 
         private async void UploadFile(BlobContainerClient containerClient, string FilePath)
         {
@@ -136,14 +136,11 @@ namespace Cloud_Experiment
         {
             // Get a reference to a blob
             BlobClient blobClient = blobStorageName.GetBlobClient(Path.Combine(cloudExperimentOutputFolder, localFilePath));
-
-            Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
-
             // Upload data from the local file
             await blobClient.UploadAsync(localFilePath, true);
 
+            //Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
         }
-
 
         public static async Task<BlobContainerClient> CreateBlobStorage(MyConfig config)
         {
@@ -203,7 +200,6 @@ namespace Cloud_Experiment
                 throw;
             }
         }
-
 
         /// <summary>
         /// Validate the connection string information in app.config and throws an exception if it looks like 
@@ -284,5 +280,26 @@ namespace Cloud_Experiment
             return table;
         }
 
+        public static async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage)
+        {
+            await foreach (BlobItem blobInfo in blobStorageName.GetBlobsAsync())
+            {
+                BlobClient blobClient = blobStorageName.GetBlobClient(blobInfo.Name);
+
+                // Download the blob's contents and save it
+                if (!File.Exists(blobInfo.Name) && (blobInfo.Name.Contains(MnistFolderFromBlobStorage)))
+                {
+                    Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
+
+                    Console.WriteLine($"Download {MnistFolderFromBlobStorage}: " + blobInfo.Name);
+
+                    using (var fileStream = System.IO.File.OpenWrite(blobInfo.Name))
+                    {
+                        await blobClient.DownloadToAsync(fileStream);
+                    }
+
+                }
+            }
+        }
     }
 }
