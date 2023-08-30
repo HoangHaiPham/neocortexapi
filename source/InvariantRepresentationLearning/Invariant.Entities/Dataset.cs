@@ -89,7 +89,7 @@ namespace Invariant.Entities
         }
         public static DataSet ScaleSet(string experimentFolder, int width, int height, DataSet sourceSet, string name)
         {
-            string sourceMNIST = Path.Combine(experimentFolder, $"{name}_{width}x{height}");
+            string sourceMNIST = Path.Combine(experimentFolder, $"{name}");
             if (!Directory.Exists(sourceMNIST)) 
             {
                 Directory.CreateDirectory((sourceMNIST));

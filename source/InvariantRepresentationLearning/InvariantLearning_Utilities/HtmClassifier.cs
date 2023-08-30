@@ -56,7 +56,6 @@ namespace InvariantLearning_Utilities
         private Dictionary<TIN, List<int[]>> m_AllInputs = new Dictionary<TIN, List<int[]>>();
         private List<Sample> m_AllSamples = new List<Sample>();
         private List<Sample> m_WinnerSamples = new List<Sample>();
-
         private List<Sample> m_AllMnistSamples = new List<Sample>();
 
         /// <summary>
@@ -65,9 +64,10 @@ namespace InvariantLearning_Utilities
 
         private Dictionary<TIN, List<int[]>> m_SelectedInputs = new Dictionary<TIN, List<int[]>>();
         private List<Sample> m_SelectedSamples = new List<Sample>();
-        
-        // HAI
-        //private List<Dictionary<string, double>> m_SumSimilarityScoreSamples = new List<Dictionary<string, double>>();
+
+        /// <summary>
+        /// Sum similarity score of all samples
+        /// </summary>
         private Dictionary<string, double> m_SumSimilarityScoreSamples = new Dictionary<string,double>();
 
 
@@ -274,22 +274,15 @@ namespace InvariantLearning_Utilities
             m_AllMnistSamples.AddRange(mnistSamples);
         }
 
-
-        public string HAI_PredictObj(Sample testingSample, int howManyFeatures = 0)
-
+        /// <summary>
+        /// Predict the sample
+        /// </summary>
+        public string PredictObj(Sample testingSample, int howManyFeatures = 0)
         {
-            //foreach (var testingSample in testingSamples)
-            //{
-                //var matchingFeatureList = GetMatchingFeatures(m_AllSamples.Select(i => i.PixelIndicies), testingSample.PixelIndicies, howManyFeatures);
-                //var matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
-
-                //Dictionary<Sample, double> results = new Dictionary<Sample, double>();
-
+            string predictedLabel;
             Dictionary<Sample, double> matchingFeatureList = new Dictionary<Sample, double>();
             matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
-
             var sumSimilarity = matchingFeatureList.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value), 2));
-
             foreach (var label in sumSimilarity)
             {
                 if (!m_SumSimilarityScoreSamples.ContainsKey(label.Key))
@@ -301,42 +294,24 @@ namespace InvariantLearning_Utilities
                     m_SumSimilarityScoreSamples[label.Key] += label.Value;
                 }
             }
-
-                //AddSelectedSamples(testingSample, matchingFeatureList);
+            //foreach (var digit in m_SumSimilarityScoreSamples)
+            //{
+            //    Trace.WriteLine($"Sum similarity of label {digit.Key}: {digit.Value}");
             //}
-
-            foreach (var digit in m_SumSimilarityScoreSamples)
-            {
-                Trace.WriteLine($"Sum similarity of label {digit.Key}: {digit.Value}");
-            }
-
-            var sumPredictedLabel = m_SumSimilarityScoreSamples.MaxBy(entry => entry.Value);
-
-            Trace.WriteLine($"Label {testingSample.Object} predicted as (maxSum) {sumPredictedLabel.Key}");
-            Trace.WriteLine("=======================================");
-
+            predictedLabel = m_SumSimilarityScoreSamples.MaxBy(entry => entry.Value).Key;
+            //Trace.WriteLine($"Label {testingSample.Object} predicted as (maxSum) {predictedLabel}");
+            //Trace.WriteLine("=======================================");
             m_SumSimilarityScoreSamples.Clear();
-
-            return sumPredictedLabel.Key;
-
-            //predict = sumPredictedLabel;
-            //return predict;
-            // ==================== HAI ====================
-
+            return predictedLabel;
         }
 
-
-        //public List<Sample> PredictObj(List<Sample> testingSamples, int howManyFeatures)
-        public string PredictObj(List<Sample> testingSamples, int howManyFeatures)
-
+        /// <summary>
+        /// Predict normal image not in 100x100 scale
+        /// </summary>
+        public string PredictObj_ForNormalImage(List<Sample> testingSamples, int howManyFeatures)
         {
             foreach (var testingSample in testingSamples)
             {
-                //var matchingFeatureList = GetMatchingFeatures(m_AllSamples.Select(i => i.PixelIndicies), testingSample.PixelIndicies, howManyFeatures);
-                //var matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
-
-                //Dictionary<Sample, double> results = new Dictionary<Sample, double>();
-
                 Dictionary<Sample, double> matchingFeatureList = new Dictionary<Sample, double>();
                 matchingFeatureList = GetMatchingFeatures(m_AllSamples, testingSample, howManyFeatures);
 
@@ -355,7 +330,6 @@ namespace InvariantLearning_Utilities
                     }
                 }
                 
-                //AddSelectedSamples(testingSample, matchingFeatureList);
             }
 
             foreach (var digit in m_SumSimilarityScoreSamples)
@@ -371,99 +345,7 @@ namespace InvariantLearning_Utilities
             m_SumSimilarityScoreSamples.Clear();
 
             return sumPredictedLabel.Key;
-
-            //predict = sumPredictedLabel;
-            //return predict;
-            // ==================== HAI ====================
-
-
-
-
-
-
-            ////m_SelectedSamples = m_SelectedSamples.GroupBy(x => x.PixelIndicies).Select(y => y.First()).ToList();
-
-            //var selectedDict = m_SelectedSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
-
-            //int maxScore = 0;
-            //string firstWinner = "unkown";
-            //string secondWinner = "unkown";
-            //string thirdWinner = "unkown";
-            //Frame frame = new Frame(0, 0, 0, 0);
-            //Sample winnerSample = new Sample();
-            //foreach (var objDict in selectedDict)
-            //{
-            //    int score = 0;
-            //    for (var i = 0; i < objDict.Value.Count; i++)
-            //    {
-            //        for (var j = i + 1; j < objDict.Value.Count; j++)
-            //        {
-            //            if ((Math.Abs(objDict.Value[i].Position.tlX - objDict.Value[j].Position.tlX) <= 1)
-            //                && (Math.Abs(objDict.Value[i].Position.tlY - objDict.Value[j].Position.tlY) <= 1))
-            //            {
-            //                score++;
-            //                if (score > maxScore)
-            //                {
-            //                    maxScore = score;
-            //                    secondWinner = firstWinner;
-            //                    thirdWinner = secondWinner;
-            //                    //if (firstWinner != objDict.Key)
-            //                    //{
-            //                    //    frame.tlX = 0;
-            //                    //    frame.tlY = 0;
-            //                    //    frame.brX = 0;
-            //                    //    frame.brY = 0;
-            //                    //}
-            //                    //else
-            //                    //{
-            //                    //    frame.tlX = (frame.tlX + objDict.Value[j].Position.tlX) / 2;
-            //                    //    frame.tlY = (frame.tlY + objDict.Value[j].Position.tlY) / 2;
-            //                    //    frame.brX = (frame.brX + objDict.Value[j].Position.brX) / 2;
-            //                    //    frame.brY = (frame.brY + objDict.Value[j].Position.brY) / 2;
-            //                    //}
-            //                    firstWinner = objDict.Key;
-            //                }
-            //            }
-            //        }
-            //    }
-            //    //foreach (var sampleOuter in objDict.Value)
-            //    //{
-            //    //    foreach (var sampleInner in objDict.Value)
-            //    //    {
-            //    //        int score = 0;
-            //    //        if ((Math.Abs(sampleOuter.Position.tlX - sampleInner.Position.tlX) <= 2)
-            //    //            && (Math.Abs(sampleOuter.Position.tlY - sampleInner.Position.tlY) <= 2))
-            //    //        {
-            //    //            score++;
-            //    //            if (score > maxScore)
-            //    //            {
-            //    //                maxScore = score;
-            //    //                winner = sampleInner.Object;
-            //    //            }
-
-            //    //        }
-            //    //    }
-            //    //}
-            //}
-            //winnerSample.Object = firstWinner;
-            //winnerSample.Position = frame;
-            //m_WinnerSamples.Add(winnerSample);
-
-            //m_SelectedSamples.Clear();
-
-            //return m_WinnerSamples;
         }
-
-        //public List<Sample> PredictObj2(List<Sample> testingSamples, int howManyFeatures)
-        //{
-        //    m_SelectedSamples.Clear();
-        //    foreach (var testingSample in testingSamples)
-        //    {
-        //        var matchingFeatureList = GetMatchingFeatures(m_AllSamples.Select(i => i.PixelIndicies), testingSample.PixelIndicies, howManyFeatures);
-        //        AddSelectedSamples(testingSample, matchingFeatureList);
-        //    }
-        //    return m_SelectedSamples;
-        //}
 
         public List<string> ValidateObj(int[] objIndicies, int howManyObjs)
         {
@@ -482,84 +364,13 @@ namespace InvariantLearning_Utilities
                     winner = sample.Object;
                     winnerList.Add(winner);
                 }
-
-                //var distance = MathHelpers.GetHammingDistance(sample.PixelIndicies, objIndicies, false);
-                //var count = 0;
-                //if (maxHamDist < distance && distance > 90)
-                //{
-                //    maxHamDist = distance;
-                //    winner = sample.Object;
-                //    winnerList.Add(winner);
-                //    count++;
-                //}
-
-                //var numOfSameBitsPct = sample.PixelIndicies.Intersect(objIndicies).Count();
-                //if (numOfSameBitsPct > maxSameBits)
-                //{
-                //    maxSameBits = numOfSameBitsPct;
-                //    winner = sample.Object;
-                //    winnerList.Add(winner);
-                //}
-
-                //int numOfBits = objIndicies.Count();
-                //double similarity = ((double)numOfSameBitsPct / (double)numOfBits) * 100;
-
-                //if (similarity >= 70)
-                //{
-                //    return winner = sample.Object;
-                //}
             }
             if (winnerList.Count > howManyObjs)
             {
                 winnerList.RemoveRange(0, winnerList.Count - howManyObjs);
             }
-            //var result = winnerList.GroupBy(x => x)
-            //      .OrderByDescending(g => g.Count())
-            //      .Select(g => g.Key)
-            //      .First();
             return winnerList;
         }
-
-        //public void PredictObj(List<Sample> testingSamples, int howManyFeatures)
-        //{
-        //    var inputDict = testingSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
-        //    foreach (var obj in inputDict)
-        //    {
-        //        foreach (var testingSample in obj.Value)
-        //        {
-        //            var matchingFeatureList = GetMatchingFeatures(m_AllSamples.Select(i => i.PixelIndicies), testingSample.PixelIndicies, howManyFeatures);
-
-        //            AddSelectedSamples(testingSample, matchingFeatureList);
-        //        }
-
-        //        var selectedDict = m_SelectedSamples.Select(x => x).GroupBy(x => x.Object).ToDictionary(group => group.Key, group => group.ToList());
-
-        //        int maxScore = 0;
-        //        string winner = "unkown";
-        //        foreach (var item in selectedDict)
-        //        {
-        //            foreach (Sample sampleOuter in item.Value)
-        //            {
-        //                foreach (Sample sampleInner in item.Value)
-        //                {
-        //                    int score = 0;
-        //                    if ((Math.Abs(sampleOuter.Position.tlX - sampleInner.Position.tlX) <= 2) 
-        //                        && (Math.Abs(sampleOuter.Position.tlY - sampleInner.Position.tlY) <= 2))
-        //                    {
-        //                        score++;
-        //                        if (score > maxScore)
-        //                        {
-        //                            maxScore = score;
-        //                            winner = sampleInner.Object;
-        //                        }
-
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        var a = 1;
-        //    }
-        //}
 
         /// <summary>
         /// Find the matching samples and add them to m_SlectedSamples
@@ -586,50 +397,18 @@ namespace InvariantLearning_Utilities
                         {
                             m_SelectedSamples.Add(sample);
                         }
-
-                        //if (m_SelectedSamples.Count() > 0)
-                        //{
-                        //    bool isAdd = true;
-                        //    foreach (var localSample in m_SelectedSamples)
-                        //    {
-                        //        var numOfSameBitsPct = localSample.PixelIndicies.Intersect(sample.PixelIndicies).Count();
-                        //        int numOfBits = sample.PixelIndicies.Count();
-                        //        double similarity = ((double)numOfSameBitsPct / (double)numOfBits) * 100;
-                        //        if (similarity > 50)
-                        //        {
-                        //            isAdd = false;
-                        //            break;
-                        //        }
-                        //    }
-                        //    if(isAdd)
-                        //    {
-                        //        m_SelectedSamples.Add(sample);
-                        //    }
-                        //}
-                        //else
-                        //{
-                        //    m_SelectedSamples.Add(sample);
-                        //}
                     }
                 }
             }
-            //m_SelectedSamples = m_SelectedSamples.GroupBy(x => x.PixelIndicies).Select(y => y.First()).ToList();
         }
 
         /// <summary>
         /// Get the best matching features with the most same bits.
         /// </summary>
-        //public List<int[]> GetMatchingFeatures(IEnumerable<int[]> trainingSamplesIndicies, int[] testingSamplesIndicies, int maxFeatures)
-        //public List<int[]> GetMatchingFeatures(List<Sample> trainingSamplesIndicies, Sample testingSamplesIndicies, int maxFeatures)
         public Dictionary<Sample, double> GetMatchingFeatures(List<Sample> trainingSamplesIndicies, Sample testingSamplesIndicies, int maxFeatures)
-
         {
-            //double maxSimilarity = 10.0;
-            //int maxSameBits = 0;
-            Dictionary <Sample, double> similarityScore = new Dictionary <Sample, double>();
-            Dictionary <Sample, double> results = new Dictionary<Sample, double>();
-
-            //List<int[]> results = new List<int[]>();
+            Dictionary<Sample, double> results = new Dictionary<Sample, double>();
+            Dictionary<Sample, double> similarityScore = new Dictionary <Sample, double>();
             foreach (var trainingIndicies in trainingSamplesIndicies)
             {
                 double similarity = MathHelpers.CalcArraySimilarity(testingSamplesIndicies.PixelIndicies, trainingIndicies.PixelIndicies);
@@ -638,81 +417,50 @@ namespace InvariantLearning_Utilities
                     similarityScore.Add(trainingIndicies, similarity);
                 }
             }
-
             // get highest similarity score
             var maxSimilarityScore = similarityScore.MaxBy(entry => entry.Value);
-
             // filter SDRs which have similarity score >= maxSimilarityScore
             double thresholdSimilarityScore = maxSimilarityScore.Value / 2;
             //double thresholdSimilarityScore = 0;
             var topN_similarity = similarityScore.Where(entry => entry.Value > thresholdSimilarityScore).ToDictionary(pair => pair.Key, pair => pair.Value);
-
             if (maxFeatures > 0)
             {
                 topN_similarity = similarityScore.OrderByDescending(entry => entry.Value).Take(maxFeatures).ToDictionary(pair => pair.Key, pair => pair.Value);
             }
 
-            //TextWriterTraceListener myTextListener = new TextWriterTraceListener(Path.Combine(testingSamplesIndicies.FramePath, @"..\", $"{(testingSamplesIndicies.FramePath).Split('\\')[^2]}_Frame_Prediction_16x16_testInTrain_3.log"));
-            //Trace.Listeners.Add(myTextListener);
-            //Trace.WriteLine($"Actual label: {testingSamplesIndicies.Object}");
-            //Trace.WriteLine($"{(testingSamplesIndicies.FramePath).Split('\\')[^2]}");
-            Trace.WriteLine($"Frame: {Path.GetFileName(testingSamplesIndicies.FramePath).Split('.')[0]}");
-
-            foreach (var simi in topN_similarity)
-            {
-                Trace.WriteLine($"Predicted label {simi.Key.Object} - Similarity: {Math.Round(simi.Value, 2)}");
-            }
-
-            // count the number of times that label is predicted
-            var countSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => group.ToList().Count);
-            // sum all similarity score for each table
-            var sumSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value),2));
-            // avg = sumSimilarity/Count
-            var avgSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value)/group.ToList().Count, 2));
-
-            foreach (var digit in countSimilarityEachLabel)
-            {
-                Trace.WriteLine($"count similarity >= {thresholdSimilarityScore}% of label {digit.Key}: {digit.Value} - Sum similarity of label {digit.Key}: {sumSimilarityEachLabel[digit.Key]} - Avg similarity of label {digit.Key}: {avgSimilarityEachLabel[digit.Key]}");
-            }
-
-            // get label predict
-            var countPredictedLabel = "unknow";
-            var sumPredictedLabel = "unknow";
-            var avgPredictedLabel = "unknow";
-            if (maxSimilarityScore.Value >= 90)
-            {
-                countPredictedLabel = maxSimilarityScore.Key.Object;
-                sumPredictedLabel = maxSimilarityScore.Key.Object;
-                avgPredictedLabel = maxSimilarityScore.Key.Object;
-            }
-            else
-            {
-                countPredictedLabel = countSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
-                sumPredictedLabel = sumSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
-                avgPredictedLabel = avgSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
-            }
-            Trace.WriteLine($"Label {testingSamplesIndicies.Object}: predicted as (maxCount) {countPredictedLabel} - predicted as (maxSum) {sumPredictedLabel} - predicted as (maxAvg) {avgPredictedLabel}");
-            Trace.WriteLine("=======================================");
-
-            //// get label predict
-            //var testPredictedLabel = "unknow";
-            //var maxSimilarity = topN_similarity.MaxBy(v => v.Value);
-            //if (maxSimilarity.Value > 98.99)
+            //Trace.WriteLine($"Frame: {Path.GetFileName(testingSamplesIndicies.FramePath).Split('.')[0]}");
+            //foreach (var simi in topN_similarity)
             //{
-            //    testPredictedLabel = maxSimilarity.Key.Object;
+            //    Trace.WriteLine($"Predicted label {simi.Key.Object} - Similarity: {Math.Round(simi.Value, 2)}");
+            //}
+            //// count the number of times that label is predicted
+            //var countSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => group.ToList().Count);
+            //// sum all similarity score for each table
+            //var sumSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value),2));
+            //// avg = sumSimilarity/Count
+            //var avgSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value)/group.ToList().Count, 2));
+            //foreach (var digit in countSimilarityEachLabel)
+            //{
+            //    Trace.WriteLine($"count similarity >= {thresholdSimilarityScore}% of label {digit.Key}: {digit.Value} - Sum similarity of label {digit.Key}: {sumSimilarityEachLabel[digit.Key]} - Avg similarity of label {digit.Key}: {avgSimilarityEachLabel[digit.Key]}");
+            //}
+            //// get label predict
+            //string countPredictedLabel, sumPredictedLabel, avgPredictedLabel;
+            //if (maxSimilarityScore.Value >= 90)
+            //{
+            //    countPredictedLabel = maxSimilarityScore.Key.Object;
+            //    sumPredictedLabel = maxSimilarityScore.Key.Object;
+            //    avgPredictedLabel = maxSimilarityScore.Key.Object;
             //}
             //else
             //{
-            //    testPredictedLabel = testCountFreq.OrderByDescending(x => x.Value).First().Key;
+            //    countPredictedLabel = countSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+            //    sumPredictedLabel = sumSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+            //    avgPredictedLabel = avgSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
             //}
-
-            //Trace.WriteLine($"{testingSamplesIndicies.Object} predicted as {testPredictedLabel}");
+            //Trace.WriteLine($"Label {testingSamplesIndicies.Object}: predicted as (maxCount) {countPredictedLabel} - predicted as (maxSum) {sumPredictedLabel} - predicted as (maxAvg) {avgPredictedLabel}");
             //Trace.WriteLine("=======================================");
 
-            //results = topN_similarity.Select(x => x.Key.PixelIndicies).ToList();
-
             results = topN_similarity;
-
             return results;
         }
 
@@ -825,63 +573,7 @@ namespace InvariantLearning_Utilities
 
             //return predictedValue;
         }
-        /*
-        //
-        // This loop peeks the best input
-        foreach (var pair in this.activeMap)
-        {
-            //
-            // We compare only outputs which are similar in the length.
-            // This is important, because some outputs, which are not related to the comparing output
-            // might have much mode cells (length) than the current output. With this, outputs with much more cells
-            // would be declared as matching outputs even if they are not.
-            if ((Math.Min(arr.Length, pair.Key.Length) / Math.Max(arr.Length, pair.Key.Length)) > 0.9)
-            {
-                double numOfSameBitsPct = (double)((double)(pair.Key.Intersect(arr).Count() / (double)arr.Length));
-                if (numOfSameBitsPct > maxSameBits)
-                {
-                    Debug.WriteLine($"indx:{n}\tbits/arrbits: {pair.Key.Length}/{arr.Length}\t{pair.Value} = similarity {numOfSameBitsPct}\t {Helpers.StringifyVector(pair.Key)}");
-                    maxSameBits = numOfSameBitsPct;
-                    predictedValue = pair.Value;
-                    indxOfMatchingInp = n;
-                }
-
-                //if (maxSameBits > 0.9)
-                //{
-                //    sortedMatches.Add(n);
-                //    // We might have muliple matchin candidates.
-                //    // For example: Let the matchin input be i1
-                //    // I1 - c1, c2, c3, c4
-                //    // I2 - c1, c2, c3, c4, c5, c6
-
-                //    Debug.WriteLine($"cnt:{n}\t{pair.Value} = bits {numOfSameBitsPct}\t {Helpers.StringifyVector(pair.Key)}");
-                //}
-            }
-            n++;
-        }
-
-        foreach (var item in sortedMatches)
-        {
-
-        }
-
-        Debug.Write("[ ");
-        for (int i = Math.Max(0, indxOfMatchingInp - 3); i < Math.Min(indxOfMatchingInp + 3, this.activeMap.Keys.Count); i++)
-        {
-            if (i == indxOfMatchingInp) Debug.Write("* ");
-            Debug.Write($"{this.inputSequence[i]}");
-            if (i == indxOfMatchingInp) Debug.Write(" *");
-
-            Debug.Write(", ");
-        }
-        Debug.WriteLine(" ]");
-
-        return predictedValue;
-        //return activeMap[ComputeHash(FlatArray(output))];
-    }
-    return default(TIN);
-    }*/
-
+   
 
         /// <summary>
         /// Traces out all cell indicies grouped by input value.
@@ -916,11 +608,6 @@ namespace InvariantLearning_Utilities
 
                 strSw.Write(Helpers.StringifySdr(new List<int[]>(item.Value)));
 
-                //foreach (var cellState in item.Value)
-                //{
-                //    var str = Helpers.StringifySdr(cellState);
-                //    strSw.WriteLine(str);
-                //}
             }
 
             if (sw != null)
@@ -933,49 +620,6 @@ namespace InvariantLearning_Utilities
             Debug.WriteLine(strSw.ToString());
             return strSw.ToString();
         }
-
-
-
-        /*
-    /// <summary>
-    /// Traces out all cell indicies grouped by input value.
-    /// </summary>
-    public void TraceState2(string fileName = null)
-    {
-
-        List<TIN> processedValues = new List<TIN>();
-
-        foreach (var item in activeMap.Values)
-        {
-            if (processedValues.Contains(item) == false)
-            {
-                StreamWriter sw = null;
-
-                if (fileName != null)
-                    sw = new StreamWriter(fileName.Replace(".csv", $"_Digit_{item}.csv"));
-
-                Debug.WriteLine("");
-                Debug.WriteLine($"{item}");
-
-                foreach (var inp in this.activeMap.Where(i => EqualityComparer<TIN>.Default.Equals((TIN)i.Value, item)))
-                {
-                    Debug.WriteLine($"{Helpers.StringifyVector(inp.Key)}");
-
-                    if (sw != null)
-                        sw.WriteLine($"{Helpers.StringifyVector(inp.Key)}");
-                }
-
-                if (sw != null)
-                {
-                    sw.Flush();
-                    sw.Close();
-                }
-
-                processedValues.Add(item);
-            }
-        }
-    }
-     */
 
 
         private string ComputeHash(byte[] rawData)

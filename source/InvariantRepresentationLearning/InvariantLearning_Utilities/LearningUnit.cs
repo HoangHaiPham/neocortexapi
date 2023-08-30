@@ -15,18 +15,13 @@ namespace InvariantLearning_Utilities
     /// </summary>
     public class LearningUnit
     {
-        public string OutFolder;
         private CortexLayer<object, object> cortexLayer;
-
         private bool isInStableState;
-
         public int width;
         public int height;
-        
         public int columnDim;
-        
+        public string OutFolder;
         public HtmClassifier<string, int[]> classifier;
-
         public string Id { get => $"_{width}x{height}_";}
 
         public LearningUnit(int width, int height, int numColumn, string outFolder)
@@ -109,7 +104,7 @@ namespace InvariantLearning_Utilities
             sw.Start();
             while (cycle < maxCycle)
             {
-                Debug.WriteLine($"-------------- Newborn Cycle {cycle} ---------------");
+                Console.WriteLine($"-------------- Newborn Cycle {cycle} ---------------");
                 foreach (var sample in trainingDataSet.Images)
                 {
                     cortexLayer.Compute(sample.ImagePath, true);
@@ -123,7 +118,7 @@ namespace InvariantLearning_Utilities
             }
             sw.Stop();
             var elapsedTime = sw.Elapsed;
-            Debug.WriteLine($"-------------- Training Time: {elapsedTime} ---------------");
+            Console.WriteLine($"-------------- Training Time: {elapsedTime} ---------------");
             Console.WriteLine("Learning Unit reach stable state in newborn learning");
         }
 

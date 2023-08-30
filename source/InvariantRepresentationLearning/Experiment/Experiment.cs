@@ -80,7 +80,6 @@ namespace Cloud_Experiment
 
                         //---------------------  READ QUEUE MESSAGE ---------------------------
                         ExerimentRequestMessage msg = null;
-                        //InputFileParameters inputFileParameter = null;
                         ExperimentResult result = null;
 
                         msg = JsonConvert.DeserializeObject<ExerimentRequestMessage>(message.AsString);

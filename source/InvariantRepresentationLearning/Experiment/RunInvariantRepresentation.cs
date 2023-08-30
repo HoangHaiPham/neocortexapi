@@ -25,8 +25,20 @@ namespace Cloud_Experiment
         private string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
         private string MnistFolderFromBlobStorage = "MnistDataset";
         private string outputFolderBlobStorage = "Output";
-        
-        public string experimentFolder = null;
+        private string sourceSet_FolderName = "SourceSet";
+        private string sourceSetBigScale_FolderName = "SourceSetBigScale";
+        private string trainingImage_FolderName = "Images_Training";
+        private string testSetBigScale_FolderName = "Images_Testing";
+        private string trainingExtractedFrame_FolderName = "ExtractedFrame_Training";
+        private string testingExtractedFrame_FolderName = "ExtractedFrame_Testing";
+        private string logResult_FileName = "Prediction_Result.log";
+        //private List<Sample> sourceSamples = new List<Sample>();
+        private List<Sample> trainingSamples = new List<Sample>();
+        private List<Sample> testingSamples = new List<Sample>();
+        private DataSet trainingImage = new DataSet(new List<Image>());
+        private DataSet testSetExtractedFromBigScale = new DataSet(new List<Image>());
+
+        public string experimentFolder;
 
         public async Task Semantic_InvariantRepresentation(MyConfig config, ExerimentRequestMessage msg, BlobContainerClient blobStorageName)
         {
@@ -38,49 +50,94 @@ namespace Cloud_Experiment
             MAX_CYCLE = msg.MAX_CYCLE;
             NUM_IMAGES_PER_LABEL = msg.NUM_IMAGES_PER_LABEL;
             PER_TESTSET = msg.PER_TESTSET;
-            experimentFolder = $"InvariantRepresentation_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}_{experimentTime}";
+            experimentFolder = $"{experimentTime}_InvariantRepresentation_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}";
+            logResult_FileName = Path.Combine(experimentFolder, logResult_FileName);
 
+            /// <summary>
+            /// Download MNIST dataset from Blob Storage
+            /// </summary>
             await AzureStorageProvider.GetMnistDatasetFromBlobStorage(blobStorageName, MnistFolderFromBlobStorage);
 
+            /// <summary>
+            /// Generate dataset MNIST dataset
+            /// </summary>
+            Console.WriteLine("Generating dataset!!!");
+            await GenerateDataset(blobStorageName);
 
-            List<Sample> trainingSamples, testingSamples;
-            DataSet sourceSetBigScale, testSetBigScale;
-            trainingSamples = new List<Sample>();
-            testingSamples = new List<Sample>();
-            List<Sample> sourceSamples = new List<Sample>();
+            /// <summary>
+            /// Training process
+            /// Construct Semantic array from SDR training samples and SDR testing samples
+            /// </summary>
+            Console.WriteLine($"-------------- TRAINING PROCESS ---------------");
+            HtmClassifier<string, ComputeCycle> cls;
+            List<Sample> testLabel_SDRListIndexes;
+            TrainingProcess(out cls, out testLabel_SDRListIndexes);
 
+            /// <summary>
+            /// Predicting process
+            /// Write result to log file
+            /// </summary>
+            Console.WriteLine($"-------------- PREDICTING PROCESS ---------------");
+            await PredictingProcess(blobStorageName, cls, testLabel_SDRListIndexes);
+
+            /// <summary>
+            /// remove unnecessary folders
+            /// </summary>
+            Directory.Delete(Path.Combine(experimentFolder, sourceSet_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, sourceSetBigScale_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, testingExtractedFrame_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, MnistFolderFromBlobStorage), true);
+            foreach (var folder in Directory.GetDirectories(Path.Combine(experimentFolder, testSetBigScale_FolderName)))
+            {
+                foreach (var sub_folder in Directory.GetDirectories(folder))
+                {
+                    Directory.Delete(sub_folder, true);
+                }
+            }
+
+            // TODO upload trainingImageFolder to Blob Storage
+            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImage_FolderName));
+            // TODO retun Path.Combine(experimentFolder, trainingImage_FolderName) to upload to blob
+
+            // TODO upload testSetBigScaleFolder to Blob Storage
+            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScale_FolderName));
+            // TODO retun Path.Combine(experimentFolder, testSetBigScale_FolderName) to upload to blob
+
+            //TODO upload log file to blob
+            await AzureStorageProvider.UploadFileToBlobStorage(blobStorageName, outputFolderBlobStorage, logResult_FileName);
+            // TODO retun Path.Combine(experimentFolder, testingExtractedFrame_FolderName) to upload to blob
+        }
+
+
+        /// <summary>
+        /// Prepare dataset from MNIST data
+        /// </summary>
+        private async Task GenerateDataset(BlobContainerClient blobStorageName)
+        {
             Utility.CreateFolderIfNotExist(experimentFolder);
-
             // Get the folder of MNIST archives tar.gz files.
             string sourceMNIST = Path.Combine(experimentFolder, MnistFolderFromBlobStorage);
             Utility.CreateFolderIfNotExist(sourceMNIST);
             Mnist.DataGen(MnistFolderFromBlobStorage, sourceMNIST, NUM_IMAGES_PER_LABEL);
-
             // get images from MNIST set
             DataSet sourceSet = new DataSet(sourceMNIST);
-
             // scale the original datasource according IMAGE_WIDTH, IMAGE_HEIGHT
-            DataSet sourceSet_scale = DataSet.ScaleSet(experimentFolder, IMAGE_WIDTH, IMAGE_HEIGHT, sourceSet, "sourceSet");
+            DataSet sourceSet_scale = DataSet.ScaleSet(experimentFolder, IMAGE_WIDTH, IMAGE_HEIGHT, sourceSet, sourceSet_FolderName);
             // put source image into 100x100 image size
-            sourceSetBigScale = DataSet.CreateTestSet(sourceSet_scale, 100, 100, Path.Combine(experimentFolder, "sourceSetBigScale"));
-
+            DataSet sourceSetBigScale = DataSet.CreateTestSet(sourceSet_scale, 100, 100, Path.Combine(experimentFolder, sourceSetBigScale_FolderName));
             // get % of sourceSet_scale to be testSet
             DataSet testSet_scale = sourceSet_scale.GetTestData(PER_TESTSET);
-
             // put test image into 100x100 image size
-            testSetBigScale = DataSet.CreateTestSet(testSet_scale, 100, 100, Path.Combine(experimentFolder, "testSetBigScale"));
-            Console.WriteLine("Generating dataset ... ");
+            DataSet testSetBigScale = DataSet.CreateTestSet(testSet_scale, 100, 100, Path.Combine(experimentFolder, this.testSetBigScale_FolderName));
 
-            // Creating the testing images from big scale image.
-            var trainingImageFolderName = "TraingImageFolder";
+            /// <summary>
+            /// Create training images from sourceSetBigScale.
+            /// </summary>
             var listOfTrainingImage = Frame.GetConvFramesbyPixel(100, 100, IMAGE_WIDTH, IMAGE_HEIGHT, PIXEL_SHIFTED);
-
-            DataSet trainingImage = new DataSet(new List<Image>());
-
             foreach (var img in sourceSetBigScale.Images)
             {
-                string trainingImageFolder = Path.Combine(experimentFolder, trainingImageFolderName, $"{img.Label}");
-
+                string trainingImageFolder = Path.Combine(experimentFolder, trainingImage_FolderName, $"{img.Label}");
                 Utility.CreateFolderIfNotExist(trainingImageFolder);
                 Dictionary<Frame, double> whitePixelDensity = new Dictionary<Frame, double>();
                 foreach (var trainImg in listOfTrainingImage)
@@ -88,7 +145,6 @@ namespace Cloud_Experiment
                     double whitePixelsCount = img.HAI_FrameDensity(trainImg);
                     whitePixelDensity.Add(trainImg, whitePixelsCount);
                 }
-
                 // get max whitedensity
                 var maxWhiteDensity_Value = whitePixelDensity.MaxBy(entry => entry.Value).Value;
                 var maxWhiteDensity_Pic = whitePixelDensity.Where(entry => entry.Value == maxWhiteDensity_Value).ToDictionary(pair => pair.Key, pair => pair.Value);
@@ -106,23 +162,20 @@ namespace Cloud_Experiment
                 }
             }
 
-            // TODO upload trainingImageFolder to Blob Storage
-            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImageFolderName));
+            //// TODO upload trainingImageFolder to Blob Storage
+            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImage_FolderName));
+            //// TODO retun Path.Combine(experimentFolder, trainingImage_FolderName) to upload to blob
 
 
-            // write extracted/filtered frame from original dataset into frames for SP to learn all pattern (EX: 32x32 -> quadrants 16x16)
+            /// <summary>
+            /// Write extracted/filtered frame from original dataset into frames for SP to learn all pattern (EX: 32x32 -> quadrants 16x16)
+            /// Create the training frames for each image and save them in folders.
+            /// </summary>
             var listOfFrame = Frame.GetConvFramesbyPixel(IMAGE_WIDTH, IMAGE_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT, PIXEL_SHIFTED);
-            string trainingFolderName = "TrainingExtractedFrame";
-            string testingFolderName = "TestingExtractedFrame";
-
-            // Creating the training frames for each images and put them in folders.
-            //foreach (var image in sourceSet_scale.Images)
             foreach (var image in trainingImage.Images)
             {
-                string extractedFrameFolder = Path.Combine(experimentFolder, trainingFolderName, $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}");
-
+                string extractedFrameFolder = Path.Combine(experimentFolder, trainingExtractedFrame_FolderName, $"{image.Label}", $"Label_{image.Label}_{Path.GetFileNameWithoutExtension(image.ImagePath)}");
                 Utility.CreateFolderIfNotExist(extractedFrameFolder);
-
                 foreach (var frame in listOfFrame)
                 {
                     if (image.IsRegionInDensityRange(frame, 0, 100))
@@ -137,8 +190,10 @@ namespace Cloud_Experiment
                 }
             }
 
-            // Create training samples from the extracted frames.
-            foreach (var classFolder in Directory.GetDirectories(Path.Combine(experimentFolder, trainingFolderName)))
+            /// <summary>
+            /// Create training samples from the extracted frames.
+            /// </summary>
+            foreach (var classFolder in Directory.GetDirectories(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName)))
             {
                 string label = Path.GetFileName(classFolder);
                 foreach (var imageFolder in Directory.GetDirectories(classFolder))
@@ -157,7 +212,6 @@ namespace Cloud_Experiment
                         var tlY = coorOffsetList[1] = 0 - coorOffsetList[1];
                         var brX = coorOffsetList[2] = IMAGE_WIDTH - coorOffsetList[2] - 1;
                         var brY = coorOffsetList[3] = IMAGE_HEIGHT - coorOffsetList[3] - 1;
-
                         Sample sample = new Sample();
                         sample.Object = label;
                         sample.FramePath = imagePath;
@@ -167,32 +221,23 @@ namespace Cloud_Experiment
                 }
             }
 
-            // Creating the testing images from big scale image.
-            var testSetBigScaleFolder = "testSetBigScale";
+            /// <summary>
+            /// Create testing images from testSetBigScale.
+            /// </summary>
             var listOfFrameBigScale = Frame.GetConvFramesbyPixel(100, 100, IMAGE_WIDTH, IMAGE_HEIGHT, PIXEL_SHIFTED);
-
-            DataSet testSetExtractedFromBigScale = new DataSet(new List<Image>());
-
             foreach (var testBigScaleImage in testSetBigScale.Images)
             {
-                string testExtractedFrameBigScaleFolder = Path.Combine(experimentFolder, testSetBigScaleFolder, $"{testBigScaleImage.Label}", $"Label_{testBigScaleImage.Label}_{Path.GetFileNameWithoutExtension(testBigScaleImage.ImagePath)}");
-
+                string testExtractedFrameBigScaleFolder = Path.Combine(experimentFolder, testSetBigScale_FolderName, $"{testBigScaleImage.Label}", $"Label_{testBigScaleImage.Label}_{Path.GetFileNameWithoutExtension(testBigScaleImage.ImagePath)}");
                 Utility.CreateFolderIfNotExist(testExtractedFrameBigScaleFolder);
-
-                //testImage.SaveTo(Path.Combine(testExtractedFrameBigScaleFolder, $"Label_{testImage.Label}_{Path.GetFileNameWithoutExtension(testImage.ImagePath)}_origin.png"));
-
                 Dictionary<Frame, double> whitePixelDensity = new Dictionary<Frame, double>();
                 foreach (var frameBigScale in listOfFrameBigScale)
                 {
                     double whitePixelsCount = testBigScaleImage.HAI_FrameDensity(frameBigScale);
                     whitePixelDensity.Add(frameBigScale, whitePixelsCount);
                 }
-
                 // get max whitedensity
                 var maxWhiteDensity_Value = whitePixelDensity.MaxBy(entry => entry.Value).Value;
                 var maxWhiteDensity_Pic = whitePixelDensity.Where(entry => entry.Value == maxWhiteDensity_Value).ToDictionary(pair => pair.Key, pair => pair.Value);
-
-                //foreach (var frameWithMaxWhiteDensity in maxWhiteDensity_Pic.Keys)
                 foreach (var (frameWithMaxWhiteDensity, i) in maxWhiteDensity_Pic.Select((x, i) => (x, i)))
                 {
                     {
@@ -207,22 +252,18 @@ namespace Cloud_Experiment
                 }
             }
 
-            // TODO upload testSetBigScaleFolder to Blob Storage
-            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScaleFolder));
+            //// TODO upload testSetBigScaleFolder to Blob Storage
+            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScale_FolderName));
+            //// TODO retun Path.Combine(experimentFolder, testSetBigScale_FolderName) to upload to blob
 
-
-
-            // Creating the testing frames for each images and put them in folders.
-            //string testFolder = Path.Combine(experimentFolder, testinggFolderName);
-            //listOfFrame = Frame.GetConvFramesbyPixel(32, 32, frameWidth, frameHeight, pixelShifted);
+            /// <summary>
+            /// Create the testing frames for each image and put them in folders.
+            /// </summary>
             foreach (var testImage in testSetExtractedFromBigScale.Images)
             {
-                string testExtractedFrameFolder = Path.Combine(experimentFolder, testingFolderName, $"{testImage.Label}", $"{Path.GetFileNameWithoutExtension(testImage.ImagePath)}");
-
+                string testExtractedFrameFolder = Path.Combine(experimentFolder, testingExtractedFrame_FolderName, $"{testImage.Label}", $"{Path.GetFileNameWithoutExtension(testImage.ImagePath)}");
                 Utility.CreateFolderIfNotExist(testExtractedFrameFolder);
-
                 testImage.SaveTo(Path.Combine(testExtractedFrameFolder, $"{Path.GetFileNameWithoutExtension(testImage.ImagePath)}_origin.png"));
-
                 foreach (var frame in listOfFrame)
                 {
                     if (testImage.IsRegionInDensityRange(frame, 0, 100))
@@ -237,9 +278,10 @@ namespace Cloud_Experiment
                 }
             }
 
-
-            // Create testing samples from the extracted frames.
-            foreach (var testClassFolder in Directory.GetDirectories(Path.Combine(experimentFolder, testingFolderName)))
+            /// <summary>
+            /// Create testing samples from the testExtractedFrameFolder
+            /// </summary>
+            foreach (var testClassFolder in Directory.GetDirectories(Path.Combine(experimentFolder, testingExtractedFrame_FolderName)))
             {
                 string label = Path.GetFileName(testClassFolder);
                 foreach (var imageFolder in Directory.GetDirectories(testClassFolder))
@@ -247,7 +289,6 @@ namespace Cloud_Experiment
                     foreach (var imagePath in Directory.GetFiles(imageFolder))
                     {
                         var fileName = Path.GetFileNameWithoutExtension(imagePath);
-
                         if (!fileName.Contains("_origin"))
                         {
                             var coordinatesString = fileName.Split('_').ToList();
@@ -256,13 +297,11 @@ namespace Cloud_Experiment
                             {
                                 coorOffsetList.Add(int.Parse(coordinates));
                             }
-
                             // Calculate offset coordinates.
                             var tlX = coorOffsetList[0];
                             var tlY = coorOffsetList[1];
                             var brX = coorOffsetList[2];
                             var brY = coorOffsetList[3];
-
                             Sample sample = new Sample();
                             sample.Object = label;
                             sample.FramePath = imagePath;
@@ -272,21 +311,27 @@ namespace Cloud_Experiment
                     }
                 }
             }
+        }
 
-            DataSet trainingSet = new DataSet(Path.Combine(experimentFolder, trainingFolderName), true);
-
-            Console.WriteLine($"Hello NeocortexApi! Experiment {nameof(Semantic_InvariantRepresentation)}");
-
-            HtmClassifier<string, ComputeCycle> cls = new HtmClassifier<string, ComputeCycle>();
+        /// <summary>
+        /// Training process
+        /// Construct Semantic array from SDR training samples and SDR testing samples
+        /// </summary>
+        private void TrainingProcess(out HtmClassifier<string, ComputeCycle> cls, out List<Sample> testLabel_SDRListIndexes)
+        {
+            DataSet trainingSet = new DataSet(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName), true);
+            cls = new HtmClassifier<string, ComputeCycle>();
             int numColumns = IMAGE_WIDTH * IMAGE_HEIGHT;
-            LearningUnit learningUnit1 = new LearningUnit(FRAME_WIDTH, FRAME_HEIGHT, numColumns, "placeholder");
-            learningUnit1.TrainingNewbornCycle(trainingSet, MAX_CYCLE);
+            LearningUnit learning = new LearningUnit(FRAME_WIDTH, FRAME_HEIGHT, numColumns, "placeholder");
+            learning.TrainingNewbornCycle(trainingSet, MAX_CYCLE);
 
 
-            // Generate SDR for training samples.
+            /// <summary>
+            /// Generate SDR for training samples
+            /// </summary>
             foreach (var trainingSample in trainingSamples)
             {
-                var activeColumns = learningUnit1.Predict(trainingSample.FramePath);
+                var activeColumns = learning.Predict(trainingSample.FramePath);
                 if (activeColumns != null && activeColumns.Length != 0)
                 {
                     trainingSample.PixelIndicies = new int[activeColumns.Length];
@@ -294,8 +339,9 @@ namespace Cloud_Experiment
                 }
             }
 
-            // Semantic array for each ImageName in Training Set (combine all the SDR frames to be the unique SDR)
-            // var trainImageName_SDRFrames = trainingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+            /// <summary>
+            /// Semantic array for each ImageName in Training Set (combine all the SDR frames to be the unique SDR)
+            /// </summary>
             var trainImageName_SDRFrames = trainingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath)).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
 
             List<Sample> trainLabel_SDRListIndexes = new List<Sample>();
@@ -303,7 +349,6 @@ namespace Cloud_Experiment
             foreach (var imageName in trainImageName_SDRFrames)
             {
                 string label = imageName.Key.Split('\\').Last().Split('_')[1];
-
                 Sample sample = new Sample();
                 sample.Object = label;
                 sample.FramePath = imageName.Key;
@@ -332,11 +377,12 @@ namespace Cloud_Experiment
             cls.LearnObj(trainLabel_SDRListIndexes);
 
 
-
-            // Generate SDR for testing samples.
+            /// <summary>
+            /// Generate SDR for testing samples.
+            /// </summary>
             foreach (var testingSample in testingSamples)
             {
-                var activeColumns = learningUnit1.Predict(testingSample.FramePath);
+                var activeColumns = learning.Predict(testingSample.FramePath);
                 if (activeColumns != null)
                 {
                     testingSample.PixelIndicies = new int[activeColumns.Length];
@@ -344,11 +390,12 @@ namespace Cloud_Experiment
                 }
             }
 
-            // Semantic array for each ImageName in Testing Set (combine all the SDR frames to be the unique SDR)
-            //var testImageName_SDRFrames = testingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath).Split('\\').Last()).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
+            /// <summary>
+            /// Semantic array for each ImageName in Testing Set (combine all the SDR frames to be the unique SDR)
+            /// </summary>
             var testImageName_SDRFrames = testingSamples.Select(x => x).GroupBy(x => Path.GetDirectoryName(x.FramePath)).ToDictionary(g => g.Key, g => g.Select(x => x.PixelIndicies).ToList());
 
-            List<Sample> testLabel_SDRListIndexes = new List<Sample>();
+            testLabel_SDRListIndexes = new List<Sample>();
             // Loop through each image
             foreach (var imageName in testImageName_SDRFrames)
             {
@@ -377,29 +424,24 @@ namespace Cloud_Experiment
                 sample.PixelIndicies = SDRIndexes.ToArray();
                 testLabel_SDRListIndexes.Add(sample);
             }
+        }
 
-            double loose_match = 0;
-            //Dictionary<string, List<string>> finalPredict = new Dictionary<string, List<string>>();
+        /// <summary>
+        /// Predicting process
+        /// Write result to log file
+        /// </summary>
+        private async Task PredictingProcess(BlobContainerClient blobStorageName, HtmClassifier<string, ComputeCycle> cls, List<Sample> testLabel_SDRListIndexes)
+        {
+            //double loose_match = 0;
             Dictionary<string, Dictionary<string, double>> finalPredict = new Dictionary<string, Dictionary<string, double>>();
-
             Dictionary<string, double> percentageForEachDigit = new Dictionary<string, double>();
-            string prev_image_name = "";
-
+            string prev_image_name = null;
             foreach (var item in testLabel_SDRListIndexes)
             {
                 string key_label = Path.GetFileNameWithoutExtension(item.FramePath).Substring(0, 9);
-                //key_label = key_label.Remove(key_label.Length - 2);
-
-                //string key_label = item.Object;
-
-                //if (!finalPredict.ContainsKey(key_label))
-                //{
-                //    finalPredict.Add(key_label, new List<string>());
-                //}
-
                 if (prev_image_name != key_label)
                 {
-                    if (prev_image_name != "")
+                    if (prev_image_name != null)
                     {
                         // get percentage of each digit predicted for each image
                         finalPredict[prev_image_name] = percentageForEachDigit.GroupBy(x => x.Key).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value) / percentageForEachDigit.Sum(x => x.Value), 2));
@@ -409,20 +451,20 @@ namespace Cloud_Experiment
                         percentageForEachDigit = new Dictionary<string, double>();
                         finalPredict.Add(key_label, percentageForEachDigit);
                     }
-
                 }
-
                 prev_image_name = key_label;
 
-                string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
-                TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
-                Trace.Listeners.Add(myTextListener);
-                Trace.WriteLine($"Actual label: {item.Object}");
-                Trace.WriteLine($"{(item.FramePath.Split('\\').Last())}");
-                Trace.WriteLine("=======================================");
-                string predictedObj = cls.HAI_PredictObj(item);
-                Trace.Flush();
-                Trace.Close();
+                //string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
+                //TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
+                //Trace.Listeners.Add(myTextListener);
+                //Trace.WriteLine($"Actual label: {item.Object}");
+                //Trace.WriteLine($"{(item.FramePath.Split('\\').Last())}");
+                //Trace.WriteLine("=======================================");
+                //string predictedObj = cls.PredictObj(item);
+                //Trace.Flush();
+                //Trace.Close();
+
+                string predictedObj = cls.PredictObj(item);
 
                 if (!percentageForEachDigit.ContainsKey(predictedObj))
                 {
@@ -430,36 +472,32 @@ namespace Cloud_Experiment
                 }
                 percentageForEachDigit[predictedObj] += 1;
 
-
-
-
-                if (predictedObj.Equals(item.Object))
-                {
-                    loose_match++;
-                }
-
-                //Debug.WriteLine($"Actual {item.Object} - Predicted {predictedObj}");
+                //if (predictedObj.Equals(item.Object))
+                //{
+                //    loose_match++;
+                //}
             }
 
-            //TODO upload testingFolderName to Blob Storage
-            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testingFolderName));
+            ////TODO upload testingFolderName to Blob Storage
+            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testingExtractedFrame_FolderName));
+            //// TODO retun Path.Combine(experimentFolder, testingExtractedFrame_FolderName) to upload to blob
 
 
-            Debug.WriteLine("HIHIHIHI");
-
-            // get percentage of each digit predicted for the last testing image when get outside of the loop
+            /// <summary>
+            /// get percentage of each digit predicted for the last testing image
+            /// </summary>
             finalPredict[prev_image_name] = percentageForEachDigit.GroupBy(x => x.Key).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value) / percentageForEachDigit.Sum(x => x.Value), 2));
 
-            // Calculate Accuracy loose match
-            double numOfItems = testLabel_SDRListIndexes.Count();
-            var loose_accuracy = (loose_match / numOfItems) * 100;
-            testingSamples.Clear();
+            //// Calculate Accuracy loose match
+            //double numOfItems = testLabel_SDRListIndexes.Count();
+            //var loose_accuracy = (loose_match / numOfItems) * 100;
+            //testingSamples.Clear();
 
-            string logResult = Path.Combine(experimentFolder, $"Prediction_Result.log");
-            TextWriterTraceListener resultFile = new TextWriterTraceListener(logResult);
+            /// <summary>
+            /// Write result to log file
+            /// </summary>
+            TextWriterTraceListener resultFile = new TextWriterTraceListener(logResult_FileName);
             Trace.Listeners.Add(resultFile);
-
-
 
             double match = 0;
             Dictionary<string, string> results = new Dictionary<string, string>();
@@ -473,7 +511,7 @@ namespace Cloud_Experiment
                 var perMaxDigitPredicted = p.Value.Where(x => x.Value == p.Value.MaxBy(x => x.Value).Value).ToList();
 
                 var checkDigitIsMatched = perMaxDigitPredicted.Where(x => x.Key == p.Key.Split("_")[1]).ToList();
-                string predictedDigit = "";
+                string predictedDigit;
                 if (checkDigitIsMatched.Count > 0)
                 {
                     predictedDigit = checkDigitIsMatched.FirstOrDefault().Key.ToString();
@@ -486,23 +524,25 @@ namespace Cloud_Experiment
 
                 results[p.Key] = predictedDigit;
 
+                Console.WriteLine($"Actual {p.Key}: Predicted {predictedDigit}");
                 Trace.WriteLine($"Actual {p.Key}: Predicted {predictedDigit}");
-
                 foreach (var w in p.Value)
                 {
-                    Trace.WriteLine($"----Actual {p.Key}: Predicted {w}");
+                    Trace.WriteLine($"-- Predicted {w.Key} with {(double)(w.Value) * 100}% similarity score");
                 }
-
-                Trace.WriteLine($"==========");
+                Trace.WriteLine($"============================");
             }
 
-            // Calculate Accuracy loose match
+            /// <summary>
+            /// Calculate Accuracy
+            /// </summary>
             double numOfSample = finalPredict.Count();
             var accuracy = (match / numOfSample) * 100;
             testingSamples.Clear();
 
-            Trace.WriteLine($"loose_accuracy: {loose_match}/{numOfItems} = {loose_accuracy}%");
-            Trace.WriteLine($"accuracy: {match}/{numOfSample} = {accuracy}%");
+            //Trace.WriteLine($"loose_accuracy: {loose_match}/{numOfItems} = {loose_accuracy}%");
+            Console.WriteLine($"Accuracy: {match}/{numOfSample} = {accuracy}%");
+            Trace.WriteLine($"Accuracy: {match}/{numOfSample} = {accuracy}%");
             Trace.Flush();
             Trace.Close();
         }
