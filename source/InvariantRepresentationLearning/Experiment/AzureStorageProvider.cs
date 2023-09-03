@@ -91,17 +91,17 @@ namespace Cloud_Experiment
         //    UploadFile(containerClient, result.FilePathHammingBitmap);
         //}
 
-        private async void UploadFile(BlobContainerClient containerClient, string FilePath)
-        {
-            BlobClient blobClient = containerClient.GetBlobClient(FilePath);
+        //private async void UploadFile(BlobContainerClient containerClient, string FilePath)
+        //{
+        //    BlobClient blobClient = containerClient.GetBlobClient(FilePath);
 
-            Console.WriteLine($">> Uploading {FilePath} onto Container '{config.ResultContainer}'!!!");
+        //    Console.WriteLine($">> Uploading {FilePath} onto Container '{config.ResultContainer}'!!!");
 
-            // Upload data from the local file
-            using FileStream uploadFileStream = File.OpenRead(FilePath);
-            await blobClient.UploadAsync(uploadFileStream, true);
-            uploadFileStream.Close();
-        }
+        //    // Upload data from the local file
+        //    using FileStream uploadFileStream = File.OpenRead(FilePath);
+        //    await blobClient.UploadAsync(uploadFileStream, true);
+        //    uploadFileStream.Close();
+        //}
 
         public async Task UploadExperimentResult(ExperimentResult result)
         {

@@ -23,8 +23,8 @@ namespace Cloud_Experiment
         private int NUM_IMAGES_PER_LABEL;
         private int PER_TESTSET;
         private string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
-        private string MnistFolderFromBlobStorage = "MnistDataset";
-        private string outputFolderBlobStorage = "Output";
+        //private string MnistFolderFromBlobStorage = "MnistDataset";
+        //private string outputFolderBlobStorage = "Output";
         private string sourceSet_FolderName = "SourceSet";
         private string sourceSetBigScale_FolderName = "SourceSetBigScale";
         private string trainingImage_FolderName = "Images_Training";
@@ -32,7 +32,7 @@ namespace Cloud_Experiment
         private string trainingExtractedFrame_FolderName = "ExtractedFrame_Training";
         private string testingExtractedFrame_FolderName = "ExtractedFrame_Testing";
         private string logResult_FileName = "Prediction_Result.log";
-        //private List<Sample> sourceSamples = new List<Sample>();
+        private string finalResult;
         private List<Sample> trainingSamples = new List<Sample>();
         private List<Sample> testingSamples = new List<Sample>();
         private DataSet trainingImage = new DataSet(new List<Image>());
@@ -40,7 +40,7 @@ namespace Cloud_Experiment
 
         public string experimentFolder;
 
-        public async Task Semantic_InvariantRepresentation(MyConfig config, ExerimentRequestMessage msg, BlobContainerClient blobStorageName)
+        public Dictionary<string, string> Semantic_InvariantRepresentation(ExerimentRequestMessage msg, string MnistFolderFromBlobStorage, string outputFolderBlobStorage)
         {
             IMAGE_WIDTH = msg.IMAGE_WIDTH;
             IMAGE_HEIGHT = msg.IMAGE_HEIGHT;
@@ -56,13 +56,13 @@ namespace Cloud_Experiment
             /// <summary>
             /// Download MNIST dataset from Blob Storage
             /// </summary>
-            await AzureStorageProvider.GetMnistDatasetFromBlobStorage(blobStorageName, MnistFolderFromBlobStorage);
+            //await AzureStorageProvider.GetMnistDatasetFromBlobStorage(blobStorageName, MnistFolderFromBlobStorage);
 
             /// <summary>
             /// Generate dataset MNIST dataset
             /// </summary>
-            Console.WriteLine("Generating dataset!!!");
-            await GenerateDataset(blobStorageName);
+            Console.WriteLine("-------------- GENERATING DATASET ---------------");
+            GenerateDataset(MnistFolderFromBlobStorage);
 
             /// <summary>
             /// Training process
@@ -78,7 +78,7 @@ namespace Cloud_Experiment
             /// Write result to log file
             /// </summary>
             Console.WriteLine($"-------------- PREDICTING PROCESS ---------------");
-            await PredictingProcess(blobStorageName, cls, testLabel_SDRListIndexes);
+            PredictingProcess(cls, testLabel_SDRListIndexes);
 
             /// <summary>
             /// remove unnecessary folders
@@ -96,24 +96,38 @@ namespace Cloud_Experiment
                 }
             }
 
-            // TODO upload trainingImageFolder to Blob Storage
-            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImage_FolderName));
-            // TODO retun Path.Combine(experimentFolder, trainingImage_FolderName) to upload to blob
+            //// TODO upload trainingImageFolder to Blob Storage
+            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImage_FolderName));
+            //// TODO retun Path.Combine(experimentFolder, trainingImage_FolderName) to upload to blob
 
-            // TODO upload testSetBigScaleFolder to Blob Storage
-            await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScale_FolderName));
-            // TODO retun Path.Combine(experimentFolder, testSetBigScale_FolderName) to upload to blob
+            //// TODO upload testSetBigScaleFolder to Blob Storage
+            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScale_FolderName));
+            //// TODO retun Path.Combine(experimentFolder, testSetBigScale_FolderName) to upload to blob
 
-            //TODO upload log file to blob
-            await AzureStorageProvider.UploadFileToBlobStorage(blobStorageName, outputFolderBlobStorage, logResult_FileName);
-            // TODO retun Path.Combine(experimentFolder, testingExtractedFrame_FolderName) to upload to blob
+            ////TODO upload log file to blob
+            //await AzureStorageProvider.UploadFileToBlobStorage(blobStorageName, outputFolderBlobStorage, logResult_FileName);
+            //// TODO retun Path.Combine(experimentFolder, testingExtractedFrame_FolderName) to upload to blob
+
+
+            Dictionary<string, string> keyValues = new Dictionary<string, string>();
+
+            keyValues.Add("outputFolderBlobStorage", $"{outputFolderBlobStorage}");
+            keyValues.Add("trainingImage_FolderName", $"{Path.Combine(experimentFolder, trainingImage_FolderName)}");
+            keyValues.Add("testSetBigScale_FolderName", $"{Path.Combine(experimentFolder, testSetBigScale_FolderName)}");
+            keyValues.Add("logResult_FileName", $"{logResult_FileName}");
+            keyValues.Add("accuracy", $"{finalResult}");
+
+            //return await Task.FromResult(keyValues);
+
+            return keyValues;
+
         }
 
 
         /// <summary>
         /// Prepare dataset from MNIST data
         /// </summary>
-        private async Task GenerateDataset(BlobContainerClient blobStorageName)
+        private void GenerateDataset(string MnistFolderFromBlobStorage)
         {
             Utility.CreateFolderIfNotExist(experimentFolder);
             // Get the folder of MNIST archives tar.gz files.
@@ -161,10 +175,6 @@ namespace Cloud_Experiment
                     }
                 }
             }
-
-            //// TODO upload trainingImageFolder to Blob Storage
-            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImage_FolderName));
-            //// TODO retun Path.Combine(experimentFolder, trainingImage_FolderName) to upload to blob
 
 
             /// <summary>
@@ -430,7 +440,7 @@ namespace Cloud_Experiment
         /// Predicting process
         /// Write result to log file
         /// </summary>
-        private async Task PredictingProcess(BlobContainerClient blobStorageName, HtmClassifier<string, ComputeCycle> cls, List<Sample> testLabel_SDRListIndexes)
+        private void PredictingProcess(HtmClassifier<string, ComputeCycle> cls, List<Sample> testLabel_SDRListIndexes)
         {
             //double loose_match = 0;
             Dictionary<string, Dictionary<string, double>> finalPredict = new Dictionary<string, Dictionary<string, double>>();
@@ -477,10 +487,6 @@ namespace Cloud_Experiment
                 //    loose_match++;
                 //}
             }
-
-            ////TODO upload testingFolderName to Blob Storage
-            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testingExtractedFrame_FolderName));
-            //// TODO retun Path.Combine(experimentFolder, testingExtractedFrame_FolderName) to upload to blob
 
 
             /// <summary>
@@ -540,9 +546,11 @@ namespace Cloud_Experiment
             var accuracy = (match / numOfSample) * 100;
             testingSamples.Clear();
 
+            finalResult = $"{match}/{numOfSample} = {accuracy}%";
+
             //Trace.WriteLine($"loose_accuracy: {loose_match}/{numOfItems} = {loose_accuracy}%");
-            Console.WriteLine($"Accuracy: {match}/{numOfSample} = {accuracy}%");
-            Trace.WriteLine($"Accuracy: {match}/{numOfSample} = {accuracy}%");
+            Console.WriteLine($"Accuracy: {finalResult}");
+            Trace.WriteLine($"Accuracy: {finalResult}");
             Trace.Flush();
             Trace.Close();
         }

@@ -10,13 +10,22 @@ namespace Cloud_Common
             this.PartitionKey = partitionKey;
             this.RowKey = rowKey;
         }
+ 
+        public DateTime StartTimeUtc { get; set; }
+        public DateTime EndTimeUtc { get; set; }
+        public long DurationSec { get; set; }
+        public string outputFolderBlobStorage { get; set; }
+        public string trainingImage_FolderName { get; set; }
+        public string testSetBigScale_FolderName { get; set; }
+        public string logResult_FileName { get; set; }
+        public string accuracy { get; set; }
+
+
+
 
         //public string Name { get; set; }
         //public string Description { get; set; }
         //public string InputFileName { get; set; }
-        public DateTime StartTimeUtc { get; set; }
-        //public DateTime EndTimeUtc { get; set; }
-        //public long DurationSec { get; set; }
         //public string FilePathscalarEncoder { get; set; }
         //public string FilePathFreshArray { get; set; }
         //public string FilePathDiffArray { get; set; }
