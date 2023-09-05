@@ -19,17 +19,5 @@ namespace Cloud_Common
         public string testSetBigScale_FolderName { get; set; }
         public string logResult_FileName { get; set; }
         public string accuracy { get; set; }
-
-
-
-
-        //public string Name { get; set; }
-        //public string Description { get; set; }
-        //public string InputFileName { get; set; }
-        //public string FilePathscalarEncoder { get; set; }
-        //public string FilePathFreshArray { get; set; }
-        //public string FilePathDiffArray { get; set; }
-        //public string FilePathHammingOutput { get; set; }
-        //public string FilePathHammingBitmap { get; set; }
     }
 }

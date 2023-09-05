@@ -18,91 +18,6 @@ namespace Cloud_Experiment
             configSection.Bind(config);
         }
 
-        //public async Task<InputFileParameters> DownloadInputFile(string fileName, BlobContainerClient trainingcontainer)
-        //{
-        //    string path = $"{Directory.GetCurrentDirectory()}\\SPMemoCapaResult\\Download";
-        //    Directory.CreateDirectory(path);
-        //    string downloadFilePath = $"{path}\\{fileName}";
-
-        //    // Get a reference to a blob
-        //    BlobClient blobClient = trainingcontainer.GetBlobClient(fileName);
-
-        //    // List all blobs in the containe
-        //    List<String> fileNameInBlob = new List<String>();
-        //    await foreach (BlobItem blobItem in trainingcontainer.GetBlobsAsync())
-        //    {
-        //        fileNameInBlob.Add(blobItem.Name);
-        //    }
-
-
-        //    if (fileNameInBlob.Contains(fileName))
-        //    {
-        //        // Download the blob's contents and save it to a file
-        //        BlobDownloadInfo download = await blobClient.DownloadAsync();
-
-        //        using (FileStream downloadFileStream = File.OpenWrite(downloadFilePath))
-        //        {
-        //            await download.Content.CopyToAsync(downloadFileStream);
-        //            downloadFileStream.Close();
-        //        }
-
-        //        // Get parameters from InputFile
-        //        string jsonText = File.ReadAllText(downloadFilePath);
-
-        //        Console.ForegroundColor = ConsoleColor.Cyan;
-        //        Console.WriteLine($">> Content of InputFile '{fileName}':");
-        //        Console.WriteLine($"{jsonText}\n");
-        //        Console.ResetColor();
-
-        //        InputFileParameters parameters = JsonConvert.DeserializeObject<InputFileParameters>(jsonText);
-
-        //        //File.Delete(downloadFilePath);
-        //        Directory.Delete(path, true);
-
-        //        return parameters;
-        //    }
-
-        //    else
-        //    {
-        //        return null;
-        //    }
-        //}
-
-        //public async Task UploadResultFile(ExperimentResult result)
-        //{
-        //    // Create a BlobServiceClient object which will be used to create a container client
-        //    BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
-
-        //    BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.ResultContainer);
-        //    try
-        //    {
-        //        await containerClient.CreateIfNotExistsAsync();
-        //    }
-        //    catch
-        //    {
-        //        Console.WriteLine($">> Conatiner {config.ResultContainer} cannot be accessed.\n");
-        //        throw new NotImplementedException();
-        //    }
-
-        //    UploadFile(containerClient, result.FilePathscalarEncoder);
-        //    UploadFile(containerClient, result.FilePathFreshArray);
-        //    UploadFile(containerClient, result.FilePathDiffArray);
-        //    UploadFile(containerClient, result.FilePathHammingOutput);
-        //    UploadFile(containerClient, result.FilePathHammingBitmap);
-        //}
-
-        //private async void UploadFile(BlobContainerClient containerClient, string FilePath)
-        //{
-        //    BlobClient blobClient = containerClient.GetBlobClient(FilePath);
-
-        //    Console.WriteLine($">> Uploading {FilePath} onto Container '{config.ResultContainer}'!!!");
-
-        //    // Upload data from the local file
-        //    using FileStream uploadFileStream = File.OpenRead(FilePath);
-        //    await blobClient.UploadAsync(uploadFileStream, true);
-        //    uploadFileStream.Close();
-        //}
-
         public async Task UploadExperimentResult(ExperimentResult result)
         {
             string tableName = config.ResultTable;
@@ -112,7 +27,7 @@ namespace Cloud_Experiment
             try
             {
                 // Insert the entity
-                Console.WriteLine($">> Uploading result onto Table Storage '{tableName}'!!!");
+                Console.WriteLine($">> Uploading result to Table Storage '{tableName}'!!!");
                 await InsertOrMergeEntityAsync(table, result);
             }
             catch (StorageException e)
@@ -123,7 +38,7 @@ namespace Cloud_Experiment
             }
         }
 
-        public static async Task UploadFolderToBlogStorage(BlobContainerClient blobStorageName, string outputFolderBlobStorage, string localFolder)
+        public async Task UploadFolderToBlogStorage(BlobContainerClient blobStorageName, string outputFolderBlobStorage, string localFolder)
         {
             var files = Directory.GetFiles(localFolder, "*.*", SearchOption.AllDirectories);
             foreach (var localFilePath in files)
@@ -132,7 +47,7 @@ namespace Cloud_Experiment
             }
         }
 
-        public static async Task UploadFileToBlobStorage(BlobContainerClient blobStorageName, string cloudExperimentOutputFolder, string localFilePath)
+        public async Task UploadFileToBlobStorage(BlobContainerClient blobStorageName, string cloudExperimentOutputFolder, string localFilePath)
         {
             // Get a reference to a blob
             BlobClient blobClient = blobStorageName.GetBlobClient(Path.Combine(cloudExperimentOutputFolder, localFilePath));
@@ -142,35 +57,62 @@ namespace Cloud_Experiment
             //Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
         }
 
-        public static async Task<BlobContainerClient> CreateBlobStorage(MyConfig config)
+        public async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage)
         {
-            // TODO created blob storage
-            BlobServiceClient blobServiceClient = new BlobServiceClient(config.StorageConnectionString);
-
-            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(config.TrainingContainer);
-            try
+            int numMnistDataset = 0;
+            await foreach (BlobItem blobInfo in blobStorageName.GetBlobsAsync())
             {
-                bool isExist = containerClient.Exists();
-                if (!isExist)
+                BlobClient blobClient = blobStorageName.GetBlobClient(blobInfo.Name);
+                numMnistDataset += 1;
+
+                // Download the blob's contents and save it
+                if (!File.Exists(blobInfo.Name) && (blobInfo.Name.Contains(MnistFolderFromBlobStorage)))
                 {
-                    await containerClient.CreateIfNotExistsAsync();
-                    Console.WriteLine($">> Training Container '{config.TrainingContainer}' created!");
+                    Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
+
+                    Console.WriteLine($"Download {MnistFolderFromBlobStorage}: " + blobInfo.Name);
+
+                    using (var fileStream = System.IO.File.OpenWrite(blobInfo.Name))
+                    {
+                        await blobClient.DownloadToAsync(fileStream);
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($">> Training Container '{config.TrainingContainer}' already exists!");
+                    Console.WriteLine($"{blobInfo.Name} already exists!");
                 }
-                Console.WriteLine($">> Waiting for Queue Message ...");
+            } 
+                    
+            if (numMnistDataset == 0) 
+            {
+                throw new Exception($"{MnistFolderFromBlobStorage} is NULL. Please upload {MnistFolderFromBlobStorage} to {blobStorageName}");
+            }
+        }
+
+        public async Task<CloudTable> CreateTableAsync(string tableName)
+        {
+            string storageConnectionString = config.StorageConnectionString;
+
+            // Retrieve storage account information from connection string.
+            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString(storageConnectionString);
+
+            // Create a table client for interacting with the table service
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient(new TableClientConfiguration());
+            CloudTable table = tableClient.GetTableReference(tableName);
+
+            try
+            {
+                await table.CreateIfNotExistsAsync();
             }
             catch
             {
-                Console.WriteLine($">> Training Container {config.TrainingContainer} cannot be accessed.\n");
+                Console.WriteLine($">> Table '{tableName}' cannot be accessed.\n");
                 throw new NotImplementedException();
             }
-            return containerClient;
+            return table;
         }
 
-        public static async Task<ExperimentResult> InsertOrMergeEntityAsync(CloudTable table, ExperimentResult result)
+        public async Task<ExperimentResult> InsertOrMergeEntityAsync(CloudTable table, ExperimentResult result)
         {
             if (result == null)
             {
@@ -201,13 +143,41 @@ namespace Cloud_Experiment
             }
         }
 
+        public async Task<BlobContainerClient> CreateBlobStorage(string StorageConnectionString, string ContainerName)
+        {
+            // TODO created blob storage
+            BlobServiceClient blobServiceClient = new BlobServiceClient(StorageConnectionString);
+
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
+            try
+            {
+                bool isExist = containerClient.Exists();
+                if (!isExist)
+                {
+                    await containerClient.CreateIfNotExistsAsync();
+                    Console.WriteLine($">> Training Container '{ContainerName}' created!");
+                }
+                else
+                {
+                    Console.WriteLine($">> Training Container '{ContainerName}' already exists!");
+                }
+                Console.WriteLine($">> Waiting for Queue Message ...");
+            }
+            catch
+            {
+                Console.WriteLine($">> Training Container {ContainerName} cannot be accessed.\n");
+                throw new NotImplementedException();
+            }
+            return containerClient;
+        }
+
         /// <summary>
         /// Validate the connection string information in app.config and throws an exception if it looks like 
         /// the user hasn't updated this to valid values. 
         /// </summary>
         /// <param name="storageConnectionString">The storage connection string</param>
         /// <returns>CloudStorageAccount object</returns>
-        public static CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
+        public CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
         {
             CloudStorageAccount storageAccount;
             try
@@ -255,51 +225,6 @@ namespace Cloud_Experiment
             }
 
             return storageAccount;
-        }
-
-        public async Task<CloudTable> CreateTableAsync(string tableName)
-        {
-            string storageConnectionString = config.StorageConnectionString;
-
-            // Retrieve storage account information from connection string.
-            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString(storageConnectionString);
-
-            // Create a table client for interacting with the table service
-            CloudTableClient tableClient = storageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            CloudTable table = tableClient.GetTableReference(tableName);
-
-            try
-            {
-                await table.CreateIfNotExistsAsync();
-            }
-            catch
-            {
-                Console.WriteLine($">> Table '{tableName}' cannot be accessed.\n");
-                throw new NotImplementedException();
-            }
-            return table;
-        }
-
-        public static async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage)
-        {
-            await foreach (BlobItem blobInfo in blobStorageName.GetBlobsAsync())
-            {
-                BlobClient blobClient = blobStorageName.GetBlobClient(blobInfo.Name);
-
-                // Download the blob's contents and save it
-                if (!File.Exists(blobInfo.Name) && (blobInfo.Name.Contains(MnistFolderFromBlobStorage)))
-                {
-                    Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
-
-                    Console.WriteLine($"Download {MnistFolderFromBlobStorage}: " + blobInfo.Name);
-
-                    using (var fileStream = System.IO.File.OpenWrite(blobInfo.Name))
-                    {
-                        await blobClient.DownloadToAsync(fileStream);
-                    }
-
-                }
-            }
         }
     }
 }

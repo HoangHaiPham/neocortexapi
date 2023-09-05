@@ -3,9 +3,7 @@ using Microsoft.Azure.Storage.Queue;
 using Microsoft.Extensions.Logging;
 using Azure.Storage.Blobs;
 using Newtonsoft.Json;
-using Azure.Storage.Blobs.Models;
 using Cloud_Common;
-using InvariantLearning_Utilities;
 
 namespace Cloud_Experiment
 {
@@ -14,7 +12,6 @@ namespace Cloud_Experiment
         private IStorageProvider storageProvider;
         private ILogger logger;
         private MyConfig config;
-        private Task GetMnistDataset;
         private string MnistFolderFromBlobStorage = "MnistDataset";
         private string outputFolderBlobStorage = "Output";
 
@@ -26,16 +23,15 @@ namespace Cloud_Experiment
             this.logger = log;
         }
 
-        public Task<ExperimentResult> Run(ExerimentRequestMessage msg, BlobContainerClient blobStorageName)
+        public Task<ExperimentResult> Run(ExerimentRequestMessage msg)
         {
-            ExperimentResult res = new ExperimentResult(this.config.GroupId, null);
+            ExperimentResult res = new ExperimentResult(null, null);
 
             res.StartTimeUtc = DateTime.UtcNow;
 
             RunInvariantRepresentation InvariantRepresentation = new RunInvariantRepresentation();
 
-            Dictionary<string, string> keyValues = null;
-            keyValues = InvariantRepresentation.Semantic_InvariantRepresentation(msg, MnistFolderFromBlobStorage, outputFolderBlobStorage);
+            Dictionary<string, string> keyValues = InvariantRepresentation.Semantic_InvariantRepresentation(msg, MnistFolderFromBlobStorage, outputFolderBlobStorage);
 
             res.PartitionKey = ($"Experiment ID: {InvariantRepresentation.experimentFolder}");
             res.RowKey = ($"{msg.IMAGE_WIDTH}x{msg.IMAGE_HEIGHT}_{msg.FRAME_WIDTH}x{msg.FRAME_HEIGHT}_{msg.NUM_IMAGES_PER_LABEL * 10}-{msg.PER_TESTSET}%_Cycle{msg.MAX_CYCLE}");
@@ -47,31 +43,21 @@ namespace Cloud_Experiment
             res.logResult_FileName = keyValues["logResult_FileName"];
             res.accuracy = keyValues["accuracy"];
 
-
-            //res.Name = msg.Name;
-            //res.Description = msg.Description;
-            //res.InputFileName = msg.InputFile;
-            //res.EndTimeUtc = DateTime.UtcNow;
-            //res.DurationSec = (long)(res.EndTimeUtc - res.StartTimeUtc).TotalSeconds;
-            //res.FilePathFreshArray = keyValues["FilePathFreshArray"];
-            //res.FilePathDiffArray = keyValues["FilePathDiffArray"];
-            //res.FilePathscalarEncoder = keyValues["FilePathscalarEncoder"];
-            //res.FilePathHammingOutput = keyValues["FilePathHammingOutput"];
-            //res.FilePathHammingBitmap = keyValues["FilePathHammingBitmap"];
-
             return Task.FromResult<ExperimentResult>(res);
         }
 
         /// <inheritdoc/>
-        //public async Task RunQueueListener(string experimentFolder, string MnistFolderFromBlobStorage, string outputFolderBlobStorage, BlobContainerClient blobStorageName, CancellationToken cancelToken)
         public async Task RunQueueListener(CancellationToken cancelToken)
         {
             CloudQueue queue = await CreateQueueAsync(config);
-            BlobContainerClient blobStorageName = await AzureStorageProvider.CreateBlobStorage(config);
 
             // TODO Split blob storage into 2 seperate blob storage
             // 1 for MNIST
+            BlobContainerClient blobStorageNameMnistData = await storageProvider.CreateBlobStorage(config.StorageConnectionString, config.MnistDataContainer);
+
             // 1 for OUTPUT
+            BlobContainerClient blobStorageNameResult = await storageProvider.CreateBlobStorage(config.StorageConnectionString, config.ResultContainer);
+
             QueueMessageRequirements();
 
             while (cancelToken.IsCancellationRequested == false)
@@ -104,28 +90,25 @@ namespace Cloud_Experiment
                             // TODO change to MNIST blob storage
                             // check if there are MNIST data in this blob
                             // if not -> upload mnist to blob manually
-                            await AzureStorageProvider.GetMnistDatasetFromBlobStorage(blobStorageName, MnistFolderFromBlobStorage);
+                            await storageProvider.GetMnistDatasetFromBlobStorage(blobStorageNameMnistData, MnistFolderFromBlobStorage);
                             //----------------------------------------------------------------------------------------
 
                             //------------------------------------RUN EXPERIMENT--------------------------------------
-                            result = await this.Run(msg, blobStorageName);
+                            result = await this.Run(msg);
                             //----------------------------------------------------------------------------------------
 
                             if (result != null)
                             {
                                 //---------------------------UPLOAD FILES TO BLOB STORAGE-------------------------------
-                                // TODO change blob storage to OUTPUT
                                 Console.WriteLine($">> Uploading {result.trainingImage_FolderName} to Blob storage");
-                                await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, result.trainingImage_FolderName);
+                                await storageProvider.UploadFolderToBlogStorage(blobStorageNameResult, outputFolderBlobStorage, result.trainingImage_FolderName);
                                 Console.WriteLine($">> Uploading {result.testSetBigScale_FolderName} to Blob storage");
-                                await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, result.testSetBigScale_FolderName);
+                                await storageProvider.UploadFolderToBlogStorage(blobStorageNameResult, outputFolderBlobStorage, result.testSetBigScale_FolderName);
                                 Console.WriteLine($">> Uploading {result.logResult_FileName} to Blob storage");
-                                await AzureStorageProvider.UploadFileToBlobStorage(blobStorageName, outputFolderBlobStorage, result.logResult_FileName);
+                                await storageProvider.UploadFileToBlobStorage(blobStorageNameResult, outputFolderBlobStorage, result.logResult_FileName);
                                 //----------------------------------------------------------------------------------------
 
                                 //------------------------UPLOAD RESULT FILES TO TABLE STORAGE----------------------------
-                                // TODO Debug why it doesn't upload to table storage??????????????
-                                Console.WriteLine($">> Uploading result to to Table storage");
                                 await storageProvider.UploadExperimentResult(result);
                                 //----------------------------------------------------------------------------------------
 
@@ -159,10 +142,10 @@ namespace Cloud_Experiment
 
                     catch (Exception ex)
                     {
-                        this.logger?.LogError(ex, ">> Queue Message Error ...");
+                        this.logger?.LogError(ex, ">> Error ...");
                         Thread.Sleep(10);
                         Console.ForegroundColor = ConsoleColor.DarkRed;
-                        Console.WriteLine($"\n>> Invalid input Queue Message.");
+                        Console.WriteLine($"\n>> {ex}.");
                         Console.ResetColor();
 
                         //---------------------- DELETE QUEUE MESSAGE ---------------------------
@@ -220,14 +203,6 @@ namespace Cloud_Experiment
                 && msg.PER_TESTSET != null);
             return valid;
         }
-
-        //private bool CheckInputParamOK(InputFileParameters inputFileParameter)
-        //{
-        //    bool valid;
-
-        //    valid = ((inputFileParameter.Mode != null) && (inputFileParameter.Mode.ToUpper() == "CSI" || inputFileParameter.Mode.ToUpper() == "SPI") && inputFileParameter.iteration > 0 && (inputFileParameter.minVal != 0 || inputFileParameter.maxVal != 0));
-        //    return valid;
-        //}
 
         /// <summary>
         /// Create a queue for the sample application to process messages in. 

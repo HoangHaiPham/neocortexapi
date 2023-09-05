@@ -11,15 +11,13 @@ namespace Cloud_Common
         /// </summary>
         /// <param name="inputFile"></param>
         /// <returns></returns>
-        //Task<ExperimentResult> Run(InputFileParameters inputFileParameter, ExerimentRequestMessage msg);
+        Task<ExperimentResult> Run(ExerimentRequestMessage msg);
 
         /// <summary>
         /// Starts the listening for incomming messages, which will trigger the experiment.
         /// </summary>
         /// <param name="cancelToken">Token used to cancel the listening process.</param>
         /// <returns></returns>
-        //Task RunQueueListener(string experimentFolder, string inputFolderBlobStorage, string outputFolderBlobStorage, BlobContainerClient blobStorageName, CancellationToken cancelToken);
-
         Task RunQueueListener(CancellationToken cancelToken);
 
     }

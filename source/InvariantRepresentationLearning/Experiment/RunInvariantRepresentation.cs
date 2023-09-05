@@ -1,14 +1,8 @@
-﻿using Azure.Storage.Blobs;
-using Cloud_Common;
+﻿using Cloud_Common;
 using Invariant.Entities;
 using InvariantLearning_Utilities;
 using NeoCortexApi.Entities;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Cloud_Experiment
 {
@@ -23,8 +17,6 @@ namespace Cloud_Experiment
         private int NUM_IMAGES_PER_LABEL;
         private int PER_TESTSET;
         private string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
-        //private string MnistFolderFromBlobStorage = "MnistDataset";
-        //private string outputFolderBlobStorage = "Output";
         private string sourceSet_FolderName = "SourceSet";
         private string sourceSetBigScale_FolderName = "SourceSetBigScale";
         private string trainingImage_FolderName = "Images_Training";
@@ -52,11 +44,6 @@ namespace Cloud_Experiment
             PER_TESTSET = msg.PER_TESTSET;
             experimentFolder = $"{experimentTime}_InvariantRepresentation_{FRAME_WIDTH}x{FRAME_HEIGHT}_{NUM_IMAGES_PER_LABEL * 10}-{PER_TESTSET}%_Cycle{MAX_CYCLE}";
             logResult_FileName = Path.Combine(experimentFolder, logResult_FileName);
-
-            /// <summary>
-            /// Download MNIST dataset from Blob Storage
-            /// </summary>
-            //await AzureStorageProvider.GetMnistDatasetFromBlobStorage(blobStorageName, MnistFolderFromBlobStorage);
 
             /// <summary>
             /// Generate dataset MNIST dataset
@@ -96,31 +83,14 @@ namespace Cloud_Experiment
                 }
             }
 
-            //// TODO upload trainingImageFolder to Blob Storage
-            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, trainingImage_FolderName));
-            //// TODO retun Path.Combine(experimentFolder, trainingImage_FolderName) to upload to blob
-
-            //// TODO upload testSetBigScaleFolder to Blob Storage
-            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScale_FolderName));
-            //// TODO retun Path.Combine(experimentFolder, testSetBigScale_FolderName) to upload to blob
-
-            ////TODO upload log file to blob
-            //await AzureStorageProvider.UploadFileToBlobStorage(blobStorageName, outputFolderBlobStorage, logResult_FileName);
-            //// TODO retun Path.Combine(experimentFolder, testingExtractedFrame_FolderName) to upload to blob
-
-
             Dictionary<string, string> keyValues = new Dictionary<string, string>();
-
             keyValues.Add("outputFolderBlobStorage", $"{outputFolderBlobStorage}");
             keyValues.Add("trainingImage_FolderName", $"{Path.Combine(experimentFolder, trainingImage_FolderName)}");
             keyValues.Add("testSetBigScale_FolderName", $"{Path.Combine(experimentFolder, testSetBigScale_FolderName)}");
             keyValues.Add("logResult_FileName", $"{logResult_FileName}");
             keyValues.Add("accuracy", $"{finalResult}");
 
-            //return await Task.FromResult(keyValues);
-
             return keyValues;
-
         }
 
 
@@ -261,10 +231,6 @@ namespace Cloud_Experiment
                     }
                 }
             }
-
-            //// TODO upload testSetBigScaleFolder to Blob Storage
-            //await AzureStorageProvider.UploadFolderToBlogStorage(blobStorageName, outputFolderBlobStorage, Path.Combine(experimentFolder, testSetBigScale_FolderName));
-            //// TODO retun Path.Combine(experimentFolder, testSetBigScale_FolderName) to upload to blob
 
             /// <summary>
             /// Create the testing frames for each image and put them in folders.

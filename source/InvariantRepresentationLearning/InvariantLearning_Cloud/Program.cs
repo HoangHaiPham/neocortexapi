@@ -1,13 +1,10 @@
-﻿using NeoCortexApi;
-using NeoCortexApi.Entities;
+﻿using NeoCortexApi.Entities;
 using System.Diagnostics;
 using Invariant.Entities;
-using NeoCortexApi.Encoders;
 using Microsoft.Extensions.Logging;
 using Cloud_Common;
 using Cloud_Experiment;
 using InvariantLearning_Utilities;
-using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 
 //using Experiment;

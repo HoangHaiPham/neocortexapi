@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Cloud_Experiment
+﻿namespace Cloud_Experiment
 {
     /// <summary>
     /// This is the class which describe the project configuration.
@@ -16,7 +10,7 @@ namespace Cloud_Experiment
         /// <summary>
         /// The name of the container in the blob storage, where training files are located.
         /// </summary>
-        public string TrainingContainer { get; set; }
+        public string MnistDataContainer { get; set; }
 
         /// <summary>
         /// The name of the container in the blob storage, where result files will be uploaded.
@@ -32,11 +26,5 @@ namespace Cloud_Experiment
         /// The name of the queue used to trigger the computation.
         /// </summary>
         public string Queue { get; set; }
-
-        /// <summary>
-        /// Set here the name of your group.
-        /// </summary>
-        public string GroupId { get; set; }
-
     }
 }
