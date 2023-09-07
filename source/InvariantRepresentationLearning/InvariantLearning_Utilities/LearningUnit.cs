@@ -3,7 +3,6 @@ using NeoCortexApi.Entities;
 using NeoCortexApi.Network;
 using System.Diagnostics;
 using HtmImageEncoder;
-using NeoCortexApi.Classifiers;
 
 using Invariant.Entities;
 
