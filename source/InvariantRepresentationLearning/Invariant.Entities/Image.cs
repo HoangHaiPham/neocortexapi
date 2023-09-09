@@ -27,8 +27,10 @@ namespace Invariant.Entities
         {
             this.Label = label;
             this.ImagePath = imagePath;
-            ImageWidth = SKBitmap.Decode(this.ImagePath).Width;
-            ImageHeight = SKBitmap.Decode(this.ImagePath).Height;
+
+
+            ImageWidth = SKBitmap.Decode(this.ImagePath.GetCompatibleLongPath()).Width;
+            ImageHeight = SKBitmap.Decode(this.ImagePath.GetCompatibleLongPath()).Height;
         }
 
         /// <summary>
@@ -164,7 +166,7 @@ namespace Invariant.Entities
             SaveTo(this.GetPixels(), imagePath);
         }
 
-        public void SaveTo(string path, Frame frame, bool binarized = true, double binarizeThreshold = 255/2)
+        public void SaveTo(string path, Frame frame, bool binarized = true, double binarizeThreshold = 255 / 2)
         {
             if (binarized)
             {
@@ -176,7 +178,7 @@ namespace Invariant.Entities
             }
         }
 
-        public static bool AreSamePixels(double[,,] pixels1, double[,,] pixels2, bool binarized = true, double binarizedThreshold = 255/2)
+        public static bool AreSamePixels(double[,,] pixels1, double[,,] pixels2, bool binarized = true, double binarizedThreshold = 255 / 2)
         {
             if (binarized)
             {
@@ -196,7 +198,7 @@ namespace Invariant.Entities
             return true;
         }
 
-        public static double[,,] Binarize(double[,,] image, double binarizedThreshold = 255/2)
+        public static double[,,] Binarize(double[,,] image, double binarizedThreshold = 255 / 2)
         {
             double[,,] res = new double[image.GetLength(1), image.GetLength(0), 3];
             for (int y = 0; y < image.GetLength(0); y++)
@@ -217,9 +219,9 @@ namespace Invariant.Entities
         public static double[,,] ApplyPixels(double[,,] pixelFromImage, double[,,] outputPixels, Frame selectedFrame)
         {
             double[,,] resultOutputPixels = outputPixels;
-            for(int i = selectedFrame.tlX; i <= selectedFrame.brX; i += 1)
+            for (int i = selectedFrame.tlX; i <= selectedFrame.brX; i += 1)
             {
-                for(int j = selectedFrame.tlY; j <= selectedFrame.brY; j += 1)
+                for (int j = selectedFrame.tlY; j <= selectedFrame.brY; j += 1)
                 {
                     outputPixels[i, j, 0] = pixelFromImage[i - selectedFrame.tlX, j - selectedFrame.tlY, 0];
                     outputPixels[i, j, 1] = pixelFromImage[i - selectedFrame.tlX, j - selectedFrame.tlY, 1];
@@ -247,7 +249,7 @@ namespace Invariant.Entities
         }
         public bool IsRegionInDensityRange(Frame frame, double lowerDensity, double UpperDensity)
         {
-            if (IsRegionAboveDensity(frame,lowerDensity) && IsRegionBelowDensity(frame,UpperDensity))
+            if (IsRegionAboveDensity(frame, lowerDensity) && IsRegionBelowDensity(frame, UpperDensity))
             {
                 return true;
             }
@@ -327,7 +329,7 @@ namespace Invariant.Entities
                     }
                 }
             }
-            double whitePixelDensity = (double)whitePixelsCount / ((double)frame.PixelCount) *100;
+            double whitePixelDensity = (double)whitePixelsCount / ((double)frame.PixelCount) * 100;
             return whitePixelDensity;
         }
         /// <summary>

@@ -139,7 +139,10 @@ namespace Cloud_Experiment
                         Console.WriteLine($">> Waiting for Queue Message ...");
                         QueueMessageRequirements();
                     }
-
+                    catch (StorageException ex)
+                    {
+                        Console.WriteLine($"{typeof(StorageException).Name}: {ex.Message}");
+                    }
                     catch (Exception ex)
                     {
                         this.logger?.LogError(ex, ">> Error ...");

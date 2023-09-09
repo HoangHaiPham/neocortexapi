@@ -61,7 +61,7 @@ namespace HtmImageEncoder
         /// <returns></returns>
         public override int[] Encode(object inputFile)
         {
-            this.binarizerParams.InputImagePath = (string)inputFile;
+            this.binarizerParams.InputImagePath = ((string)inputFile).GetCompatibleLongPath();
 
             var binarizer = new ImageBinarizer(binarizerParams);
 

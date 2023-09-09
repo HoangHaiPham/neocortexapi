@@ -68,7 +68,7 @@ namespace Cloud_Experiment
                 // Download the blob's contents and save it
                 if (!File.Exists(blobInfo.Name) && (blobInfo.Name.Contains(MnistFolderFromBlobStorage)))
                 {
-                    Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
+                    Utility.CreateFolderIfNotExist(Path.GetDirectoryName(blobInfo.Name));
 
                     Console.WriteLine($"Download {MnistFolderFromBlobStorage}: " + blobInfo.Name);
 

@@ -1,6 +1,7 @@
 ﻿using Newtonsoft;
 using Newtonsoft.Json;
 using shortid;
+using System.Security.AccessControl;
 
 namespace InvariantLearning_Utilities
 {
@@ -21,15 +22,18 @@ namespace InvariantLearning_Utilities
         /// Create Folder
         /// </summary>
         /// <param name="Folder">relative path of the folder from directory of the running program or absolute path</param>
-        public static void CreateFolderIfNotExist(string Folder)
+        public static void CreateFolderIfNotExist(string? Folder)
         {
+            if (string.IsNullOrWhiteSpace(Folder))
+                return;
+
             if (Directory.Exists(Folder))
             {
                 return;
             }
             else
             {
-                Directory.CreateDirectory(Folder);
+                var directoryInfo = Directory.CreateDirectory(Folder);
             }
         }
 
@@ -68,7 +72,7 @@ namespace InvariantLearning_Utilities
         internal static void WriteOutputToFile(string v, (string, string) result)
         {
             using (StreamWriter file = new StreamWriter($"{v}.csv"))
-            file.WriteLine($"predicted as {result.Item1}, correct label: {result.Item2}");
+                file.WriteLine($"predicted as {result.Item1}, correct label: {result.Item2}");
         }
 
         internal static void WriteResultOfOneSPDetailed(Dictionary<string, string> allResultForEachFrame, string filePath)
@@ -90,7 +94,7 @@ namespace InvariantLearning_Utilities
                 {
                     file.WriteLine($"Predicting image {entry["fileName"]}");
                     List<string> arrangedEntry = new List<string>();
-                    foreach(var a in entry)
+                    foreach (var a in entry)
                     {
                         arrangedEntry.Add($"{a.Key}__{a.Value}");
                     }
@@ -104,7 +108,7 @@ namespace InvariantLearning_Utilities
                     List<string> top3 = new List<string>(ToListResult(top3similarities));
                     file.WriteLine(string.Join(";", top3));
                 }
-                accuracy = correctCount/ (double)allResult.Count;
+                accuracy = correctCount / (double)allResult.Count;
                 file.WriteLine($"accuracy: {accuracy} {correctCount}/{allResult.Count}");
             }
         }
@@ -112,7 +116,7 @@ namespace InvariantLearning_Utilities
         private static List<string> ToListResult(Dictionary<string, string> top3similarities)
         {
             List<string> strings = new List<string>();
-            foreach(var a in top3similarities)
+            foreach (var a in top3similarities)
             {
                 strings.Add($" {a.Key}: {a.Value}% ");
             }
@@ -122,7 +126,7 @@ namespace InvariantLearning_Utilities
         private static List<string> GetLabelFromResult(Dictionary<string, string> top3similarities)
         {
             List<string> result = new List<string>();
-            foreach(var a in top3similarities)
+            foreach (var a in top3similarities)
             {
                 string label = a.Key.Split("_")[0];
                 result.Add(label);
@@ -130,18 +134,19 @@ namespace InvariantLearning_Utilities
             return result;
         }
 
-        private static Dictionary<string, string> GetTop3Similarites(Dictionary<string,string> result)
+        private static Dictionary<string, string> GetTop3Similarites(Dictionary<string, string> result)
         {
             Dictionary<string, string> top3similarities = new Dictionary<string, string>();
             foreach (var entry in result)
             {
-                if((entry.Key == "CorrectLabel") || (entry.Key == "fileName")){
+                if ((entry.Key == "CorrectLabel") || (entry.Key == "fileName"))
+                {
                     continue;
                 }
                 else
                 {
                     top3similarities.Add(entry.Key, entry.Value);
-                    if(top3similarities.Count == 4)
+                    if (top3similarities.Count == 4)
                     {
                         top3similarities.Remove(top3similarities.MinBy(kvp => kvp.Value).Key);
                     }
@@ -153,23 +158,23 @@ namespace InvariantLearning_Utilities
         internal static int[] AddArray(int[] current, int[] a)
         {
             int[] res = new int[current.Length];
-            for(int i = 0; i< current.Length; i += 1)
+            for (int i = 0; i < current.Length; i += 1)
             {
                 res[i] = current[i] + a[i];
             }
             return res;
         }
 
-        internal static void WriteListToCsv(string path,  List<Dictionary<string, string>> allResult)
+        internal static void WriteListToCsv(string path, List<Dictionary<string, string>> allResult)
         {
 
-            using(StreamWriter file = new StreamWriter($"{path}.csv"))
+            using (StreamWriter file = new StreamWriter($"{path}.csv"))
             {
                 List<string> headers = new List<string>();
 
-                foreach(var entry in allResult)
+                foreach (var entry in allResult)
                 {
-                    foreach(var key in entry.Keys)
+                    foreach (var key in entry.Keys)
                     {
                         if (!headers.Contains(key))
                         {
@@ -184,7 +189,7 @@ namespace InvariantLearning_Utilities
                 {
                     List<string> arrangedEntry = new List<string>();
 
-                    foreach(var header in headers)
+                    foreach (var header in headers)
                     {
                         if (entry.ContainsKey(header))
                         {
@@ -204,7 +209,7 @@ namespace InvariantLearning_Utilities
         internal static double CalcArrayDistance(int[] entry, int[] current)
         {
             double result = 0;
-            for(int i = 0; i < entry.Length; i += 1)
+            for (int i = 0; i < entry.Length; i += 1)
             {
                 result += Math.Pow((entry[i] - current[i]), 2);
             }

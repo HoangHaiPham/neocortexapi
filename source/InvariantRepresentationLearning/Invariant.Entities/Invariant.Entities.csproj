@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="MNIST.IO" Version="1.0.1" />
-    <PackageReference Include="SkiaSharp" Version="2.88.2" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.80.2" />
   </ItemGroup>
 
 </Project>

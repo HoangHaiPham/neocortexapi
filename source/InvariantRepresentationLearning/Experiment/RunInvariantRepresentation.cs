@@ -16,7 +16,7 @@ namespace Cloud_Experiment
         private int MAX_CYCLE;
         private int NUM_IMAGES_PER_LABEL;
         private int PER_TESTSET;
-        private string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
+        private string experimentTime = (DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-")).Replace(' ', '-');
         private string sourceSet_FolderName = "SourceSet";
         private string sourceSetBigScale_FolderName = "SourceSetBigScale";
         private string trainingImage_FolderName = "Images_Training";
