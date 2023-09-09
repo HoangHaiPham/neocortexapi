@@ -57,7 +57,6 @@ namespace Cloud_Experiment
             //Console.WriteLine("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
         }
 
-        // TODO remove this function because when running on docker, permission denied when trying to download MnistDataset
         public async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage)
         {
             int numMnistDataset = 0;

@@ -22,8 +22,7 @@
 	"PER_TESTSET": 20
 }
 
-========== EXAMPLE 2 ==========
-
+========== EXAMPLE 3 ==========
 {
 	"IMAGE_WIDTH": 28,
 	"IMAGE_HEIGHT": 28,
@@ -32,5 +31,17 @@
 	"PIXEL_SHIFTED": 4,
 	"MAX_CYCLE": 200,
 	"NUM_IMAGES_PER_LABEL": 50,
+	"PER_TESTSET": 20
+}
+
+========== EXAMPLE 4 ==========
+{
+	"IMAGE_WIDTH": 28,
+	"IMAGE_HEIGHT": 28,
+	"FRAME_WIDTH": 4,
+	"FRAME_HEIGHT": 4,
+	"PIXEL_SHIFTED": 4,
+	"MAX_CYCLE": 300,
+	"NUM_IMAGES_PER_LABEL": 100,
 	"PER_TESTSET": 20
 }

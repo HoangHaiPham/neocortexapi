@@ -51,7 +51,7 @@ namespace Cloud_Experiment
         {
             CloudQueue queue = await CreateQueueAsync(config);
 
-            // TODO remove this function because when running on docker, permission denied when trying to download MnistDataset
+            // MnistDataset on blob storage
             BlobContainerClient blobStorageNameMnistData = await storageProvider.CreateBlobStorage(config.StorageConnectionString, config.MnistDataContainer);
 
             // Output folder on blob storage
@@ -90,8 +90,7 @@ namespace Cloud_Experiment
                             /// Download MNIST dataset from Blob Storage
                             /// </summary>
                             /// 
-                            // TODO remove this function because when running on docker, permission denied when trying to download MnistDataset
-                            //await storageProvider.GetMnistDatasetFromBlobStorage(blobStorageNameMnistData, MnistFolderFromBlobStorage);
+                            await storageProvider.GetMnistDatasetFromBlobStorage(blobStorageNameMnistData, MnistFolderFromBlobStorage);
                             //----------------------------------------------------------------------------------------
 
                             //------------------------------------RUN EXPERIMENT--------------------------------------
