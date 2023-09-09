@@ -1,10 +1,6 @@
-﻿using Invariant.Entities;
-using MNIST.IO;
+﻿using MNIST.IO;
 using SkiaSharp;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 
 namespace Invariant.Entities
 {

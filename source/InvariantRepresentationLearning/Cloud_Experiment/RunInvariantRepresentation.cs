@@ -16,7 +16,7 @@ namespace Cloud_Experiment
         private int MAX_CYCLE;
         private int NUM_IMAGES_PER_LABEL;
         private int PER_TESTSET;
-        private string experimentTime = DateTime.UtcNow.ToLongDateString().Replace(", ", " ") + "_" + DateTime.UtcNow.ToLongTimeString().Replace(":", "-");
+        private string experimentTime = DateTime.UtcNow.ToShortDateString().Replace(", ", " ").Replace("/", "-") + "_" + DateTime.UtcNow.ToShortTimeString().Replace(":", "-");
         private string sourceSet_FolderName = "SourceSet";
         private string sourceSetBigScale_FolderName = "SourceSetBigScale";
         private string trainingImage_FolderName = "Images_Training";
@@ -70,18 +70,18 @@ namespace Cloud_Experiment
             /// <summary>
             /// remove unnecessary folders
             /// </summary>
-            Directory.Delete(Path.Combine(experimentFolder, sourceSet_FolderName), true);
-            Directory.Delete(Path.Combine(experimentFolder, sourceSetBigScale_FolderName), true);
-            Directory.Delete(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName), true);
-            Directory.Delete(Path.Combine(experimentFolder, testingExtractedFrame_FolderName), true);
-            Directory.Delete(Path.Combine(experimentFolder, MnistFolderFromBlobStorage), true);
-            foreach (var folder in Directory.GetDirectories(Path.Combine(experimentFolder, testSetBigScale_FolderName)))
-            {
-                foreach (var sub_folder in Directory.GetDirectories(folder))
-                {
-                    Directory.Delete(sub_folder, true);
-                }
-            }
+            //Directory.Delete(Path.Combine(experimentFolder, sourceSet_FolderName), true);
+            //Directory.Delete(Path.Combine(experimentFolder, sourceSetBigScale_FolderName), true);
+            //Directory.Delete(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName), true);
+            //Directory.Delete(Path.Combine(experimentFolder, testingExtractedFrame_FolderName), true);
+            //Directory.Delete(Path.Combine(experimentFolder, MnistFolderFromBlobStorage), true);
+            //foreach (var folder in Directory.GetDirectories(Path.Combine(experimentFolder, testSetBigScale_FolderName)))
+            //{
+            //    foreach (var sub_folder in Directory.GetDirectories(folder))
+            //    {
+            //        Directory.Delete(sub_folder, true);
+            //    }
+            //}
 
             Dictionary<string, string> keyValues = new Dictionary<string, string>();
             keyValues.Add("outputFolderBlobStorage", $"{outputFolderBlobStorage}");
@@ -181,7 +181,7 @@ namespace Cloud_Experiment
                     foreach (var imagePath in Directory.GetFiles(imageFolder))
                     {
                         var fileName = Path.GetFileNameWithoutExtension(imagePath);
-                        var coordinatesString = fileName.Split('_').ToList();
+                        var coordinatesString = fileName.Split("_").ToList();
                         List<int> coorOffsetList = new List<int>();
                         foreach (var coordinates in coordinatesString)
                         {
@@ -267,7 +267,7 @@ namespace Cloud_Experiment
                         var fileName = Path.GetFileNameWithoutExtension(imagePath);
                         if (!fileName.Contains("_origin"))
                         {
-                            var coordinatesString = fileName.Split('_').ToList();
+                            var coordinatesString = fileName.Split("_").ToList();
                             List<int> coorOffsetList = new List<int>();
                             foreach (var coordinates in coordinatesString)
                             {
@@ -324,7 +324,7 @@ namespace Cloud_Experiment
             // Loop through each image
             foreach (var imageName in trainImageName_SDRFrames)
             {
-                string label = imageName.Key.Split('\\').Last().Split('_')[1];
+                string label = imageName.Key.Split("\\").Last().Split("_")[1];
                 Sample sample = new Sample();
                 sample.Object = label;
                 sample.FramePath = imageName.Key;
@@ -375,7 +375,9 @@ namespace Cloud_Experiment
             // Loop through each image
             foreach (var imageName in testImageName_SDRFrames)
             {
-                string label = imageName.Key.Split('\\').Last().Split('_')[1];
+                string label = imageName.Key.Split("\\").Last().Split("_")[1];
+                Console.WriteLine(imageName.Key);
+
                 Sample sample = new Sample();
                 sample.Object = label;
                 sample.FramePath = imageName.Key;
@@ -430,17 +432,21 @@ namespace Cloud_Experiment
                 }
                 prev_image_name = key_label;
 
-                //string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
-                //TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
-                //Trace.Listeners.Add(myTextListener);
-                //Trace.WriteLine($"Actual label: {item.Object}");
-                //Trace.WriteLine($"{(item.FramePath.Split('\\').Last())}");
-                //Trace.WriteLine("=======================================");
-                //string predictedObj = cls.PredictObj(item);
-                //Trace.Flush();
-                //Trace.Close();
+                string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
+                Console.WriteLine(Path.Combine(item.FramePath, @"..\"));
+                Console.WriteLine(logFileName);
 
+
+                TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
+                Trace.Listeners.Add(myTextListener);
+                Trace.WriteLine($"Actual label: {item.Object}");
+                Trace.WriteLine($"{(item.FramePath.Split('\\').Last())}");
+                Trace.WriteLine("=======================================");
                 string predictedObj = cls.PredictObj(item);
+                Trace.Flush();
+                Trace.Close();
+
+                //string predictedObj = cls.PredictObj(item);
 
                 if (!percentageForEachDigit.ContainsKey(predictedObj))
                 {

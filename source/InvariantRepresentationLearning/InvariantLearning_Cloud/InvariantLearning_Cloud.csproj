@@ -33,7 +33,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ImageEncoder\HtmImageEncoder.csproj" />
     <ProjectReference Include="..\Cloud_Common\Cloud_Common.csproj" />
-    <ProjectReference Include="..\Experiment\Cloud_Experiment.csproj" />
+    <ProjectReference Include="..\Cloud_Experiment\Cloud_Experiment.csproj" />
     <ProjectReference Include="..\Invariant.Entities\Invariant.Entities.csproj" />
     <ProjectReference Include="..\..\NeoCortexApi\NeoCortexApi.csproj" />
     <ProjectReference Include="..\..\NeoCortexEntities\NeoCortexEntities.csproj" />
@@ -45,7 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.env.json">
+    <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="MnistDataset\t10k-images-idx3-ubyte.gz">

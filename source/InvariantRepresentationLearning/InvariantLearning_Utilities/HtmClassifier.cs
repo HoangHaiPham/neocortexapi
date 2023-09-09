@@ -428,37 +428,37 @@ namespace InvariantLearning_Utilities
                 topN_similarity = similarityScore.OrderByDescending(entry => entry.Value).Take(maxFeatures).ToDictionary(pair => pair.Key, pair => pair.Value);
             }
 
-            //Trace.WriteLine($"Frame: {Path.GetFileName(testingSamplesIndicies.FramePath).Split('.')[0]}");
-            //foreach (var simi in topN_similarity)
-            //{
-            //    Trace.WriteLine($"Predicted label {simi.Key.Object} - Similarity: {Math.Round(simi.Value, 2)}");
-            //}
-            //// count the number of times that label is predicted
-            //var countSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => group.ToList().Count);
-            //// sum all similarity score for each table
-            //var sumSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value),2));
-            //// avg = sumSimilarity/Count
-            //var avgSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value)/group.ToList().Count, 2));
-            //foreach (var digit in countSimilarityEachLabel)
-            //{
-            //    Trace.WriteLine($"count similarity >= {thresholdSimilarityScore}% of label {digit.Key}: {digit.Value} - Sum similarity of label {digit.Key}: {sumSimilarityEachLabel[digit.Key]} - Avg similarity of label {digit.Key}: {avgSimilarityEachLabel[digit.Key]}");
-            //}
-            //// get label predict
-            //string countPredictedLabel, sumPredictedLabel, avgPredictedLabel;
-            //if (maxSimilarityScore.Value >= 90)
-            //{
-            //    countPredictedLabel = maxSimilarityScore.Key.Object;
-            //    sumPredictedLabel = maxSimilarityScore.Key.Object;
-            //    avgPredictedLabel = maxSimilarityScore.Key.Object;
-            //}
-            //else
-            //{
-            //    countPredictedLabel = countSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
-            //    sumPredictedLabel = sumSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
-            //    avgPredictedLabel = avgSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
-            //}
-            //Trace.WriteLine($"Label {testingSamplesIndicies.Object}: predicted as (maxCount) {countPredictedLabel} - predicted as (maxSum) {sumPredictedLabel} - predicted as (maxAvg) {avgPredictedLabel}");
-            //Trace.WriteLine("=======================================");
+            Trace.WriteLine($"Frame: {Path.GetFileName(testingSamplesIndicies.FramePath).Split('.')[0]}");
+            foreach (var simi in topN_similarity)
+            {
+                Trace.WriteLine($"Predicted label {simi.Key.Object} - Similarity: {Math.Round(simi.Value, 2)}");
+            }
+            // count the number of times that label is predicted
+            var countSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => group.ToList().Count);
+            // sum all similarity score for each table
+            var sumSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value), 2));
+            // avg = sumSimilarity/Count
+            var avgSimilarityEachLabel = topN_similarity.Select(x => x).GroupBy(x => x.Key.Object).ToDictionary(group => group.Key, group => Math.Round(group.Sum(x => x.Value) / group.ToList().Count, 2));
+            foreach (var digit in countSimilarityEachLabel)
+            {
+                Trace.WriteLine($"count similarity >= {thresholdSimilarityScore}% of label {digit.Key}: {digit.Value} - Sum similarity of label {digit.Key}: {sumSimilarityEachLabel[digit.Key]} - Avg similarity of label {digit.Key}: {avgSimilarityEachLabel[digit.Key]}");
+            }
+            // get label predict
+            string countPredictedLabel, sumPredictedLabel, avgPredictedLabel;
+            if (maxSimilarityScore.Value >= 90)
+            {
+                countPredictedLabel = maxSimilarityScore.Key.Object;
+                sumPredictedLabel = maxSimilarityScore.Key.Object;
+                avgPredictedLabel = maxSimilarityScore.Key.Object;
+            }
+            else
+            {
+                countPredictedLabel = countSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+                sumPredictedLabel = sumSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+                avgPredictedLabel = avgSimilarityEachLabel.OrderByDescending(x => x.Value).First().Key;
+            }
+            Trace.WriteLine($"Label {testingSamplesIndicies.Object}: predicted as (maxCount) {countPredictedLabel} - predicted as (maxSum) {sumPredictedLabel} - predicted as (maxAvg) {avgPredictedLabel}");
+            Trace.WriteLine("=======================================");
 
             results = topN_similarity;
             return results;

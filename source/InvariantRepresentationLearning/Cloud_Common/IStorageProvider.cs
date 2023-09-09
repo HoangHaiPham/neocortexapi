@@ -17,7 +17,7 @@ namespace Cloud_Common
 
         Task UploadFileToBlobStorage(BlobContainerClient blobStorageName, string cloudExperimentOutputFolder, string localFilePath);
 
-        Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage);
+        //Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage);
 
         Task<CloudTable> CreateTableAsync(string tableName);
 
