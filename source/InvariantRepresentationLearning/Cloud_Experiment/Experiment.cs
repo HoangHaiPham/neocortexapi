@@ -79,6 +79,10 @@ namespace Cloud_Experiment
 
                         Thread.Sleep(100);
 
+                        //---------------------- DELETE QUEUE MESSAGE ---------------------------
+                        await queue.DeleteMessageAsync(message);
+                        //-----------------------------------------------------------------------
+
                         if (CheckMessageOK(msg))
                         {
                             //---------------------------DOWNLOAD MNIST DATASET FROM BLOB STORAGE------------------------------
@@ -87,7 +91,7 @@ namespace Cloud_Experiment
                             /// </summary>
                             /// 
                             // TODO remove this function because when running on docker, permission denied when trying to download MnistDataset
-                            // await storageProvider.GetMnistDatasetFromBlobStorage(blobStorageNameMnistData, MnistFolderFromBlobStorage);
+                            //await storageProvider.GetMnistDatasetFromBlobStorage(blobStorageNameMnistData, MnistFolderFromBlobStorage);
                             //----------------------------------------------------------------------------------------
 
                             //------------------------------------RUN EXPERIMENT--------------------------------------
@@ -127,16 +131,15 @@ namespace Cloud_Experiment
                             Console.ResetColor();
                         }
 
-                        //---------------------- DELETE QUEUE MESSAGE ---------------------------
-                        await queue.DeleteMessageAsync(message);
-                        //-----------------------------------------------------------------------
-
                         Console.WriteLine($">> Queue Message was deleted.");
                         Console.WriteLine($"=====================================================================================================================");
                         Console.WriteLine($">> Waiting for Queue Message ...");
                         QueueMessageRequirements();
                     }
-
+                    catch (StorageException ex)
+                    {
+                        Console.WriteLine($"{typeof(StorageException).Name}: {ex.Message}");
+                    }
                     catch (Exception ex)
                     {
                         this.logger?.LogError(ex, ">> Error ...");

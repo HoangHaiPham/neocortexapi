@@ -70,18 +70,18 @@ namespace Cloud_Experiment
             /// <summary>
             /// remove unnecessary folders
             /// </summary>
-            //Directory.Delete(Path.Combine(experimentFolder, sourceSet_FolderName), true);
-            //Directory.Delete(Path.Combine(experimentFolder, sourceSetBigScale_FolderName), true);
-            //Directory.Delete(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName), true);
-            //Directory.Delete(Path.Combine(experimentFolder, testingExtractedFrame_FolderName), true);
-            //Directory.Delete(Path.Combine(experimentFolder, MnistFolderFromBlobStorage), true);
-            //foreach (var folder in Directory.GetDirectories(Path.Combine(experimentFolder, testSetBigScale_FolderName)))
-            //{
-            //    foreach (var sub_folder in Directory.GetDirectories(folder))
-            //    {
-            //        Directory.Delete(sub_folder, true);
-            //    }
-            //}
+            Directory.Delete(Path.Combine(experimentFolder, sourceSet_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, sourceSetBigScale_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, trainingExtractedFrame_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, testingExtractedFrame_FolderName), true);
+            Directory.Delete(Path.Combine(experimentFolder, MnistFolderFromBlobStorage), true);
+            foreach (var folder in Directory.GetDirectories(Path.Combine(experimentFolder, testSetBigScale_FolderName)))
+            {
+                foreach (var sub_folder in Directory.GetDirectories(folder))
+                {
+                    Directory.Delete(sub_folder, true);
+                }
+            }
 
             Dictionary<string, string> keyValues = new Dictionary<string, string>();
             keyValues.Add("outputFolderBlobStorage", $"{outputFolderBlobStorage}");
@@ -324,7 +324,8 @@ namespace Cloud_Experiment
             // Loop through each image
             foreach (var imageName in trainImageName_SDRFrames)
             {
-                string label = imageName.Key.Split("\\").Last().Split("_")[1];
+                string label = Path.GetDirectoryName(imageName.Key).Split(Path.DirectorySeparatorChar).Last();
+
                 Sample sample = new Sample();
                 sample.Object = label;
                 sample.FramePath = imageName.Key;
@@ -375,8 +376,7 @@ namespace Cloud_Experiment
             // Loop through each image
             foreach (var imageName in testImageName_SDRFrames)
             {
-                string label = imageName.Key.Split("\\").Last().Split("_")[1];
-                Console.WriteLine(imageName.Key);
+                string label = Path.GetDirectoryName(imageName.Key).Split(Path.DirectorySeparatorChar).Last();
 
                 Sample sample = new Sample();
                 sample.Object = label;
@@ -432,21 +432,19 @@ namespace Cloud_Experiment
                 }
                 prev_image_name = key_label;
 
-                string logFileName = Path.Combine(item.FramePath, @"..\", $"{item.FramePath.Split('\\').Last()}.log");
-                Console.WriteLine(Path.Combine(item.FramePath, @"..\"));
-                Console.WriteLine(logFileName);
-
-
-                TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
-                Trace.Listeners.Add(myTextListener);
-                Trace.WriteLine($"Actual label: {item.Object}");
-                Trace.WriteLine($"{(item.FramePath.Split('\\').Last())}");
-                Trace.WriteLine("=======================================");
-                string predictedObj = cls.PredictObj(item);
-                Trace.Flush();
-                Trace.Close();
-
+                //string fullPath = Path.GetFullPath(item.FramePath).TrimEnd(Path.DirectorySeparatorChar);
+                //string logFileName = Path.Combine(fullPath, $"{Path.GetFileName(fullPath)}.log");
+                //Console.WriteLine(logFileName);
+                //TextWriterTraceListener myTextListener = new TextWriterTraceListener(logFileName);
+                //Trace.Listeners.Add(myTextListener);
+                //Trace.WriteLine($"Actual label: {item.Object}");
+                //Trace.WriteLine($"{Path.GetFileName(fullPath)}");
+                //Trace.WriteLine("=======================================");
                 //string predictedObj = cls.PredictObj(item);
+                //Trace.Flush();
+                //Trace.Close();
+
+                string predictedObj = cls.PredictObj(item);
 
                 if (!percentageForEachDigit.ContainsKey(predictedObj))
                 {

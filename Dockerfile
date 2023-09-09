@@ -4,13 +4,11 @@
 #For more information, please see https://aka.ms/containercompat
 
 FROM mcr.microsoft.com/dotnet/runtime:6.0 AS base
-#FROM mcr.microsoft.com/dotnet/aspnet:6.0-focal AS base
 RUN apt-get update \
 && apt-get install -y --no-install-recommends libfontconfig1 \
 && rm -rf /var/lib/apt/lists/*
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
-#FROM mcr.microsoft.com/dotnet/sdk:6.0-focal AS build
 
 # Set current directory to /src
 WORKDIR /src
@@ -34,5 +32,6 @@ FROM base AS final
 WORKDIR /app
 # Copy all from /app/publish to /app
 COPY --from=publish /app/publish .
-# Run program
+# Run program with root permission
+#USER root
 ENTRYPOINT ["dotnet", "InvariantLearning_Cloud.dll"]

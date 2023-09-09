@@ -1,3 +1,4 @@
+========== EXAMPLE 1 ==========
 {
 	"IMAGE_WIDTH": 28,
 	"IMAGE_HEIGHT": 28,
@@ -6,5 +7,30 @@
 	"PIXEL_SHIFTED": 14,
 	"MAX_CYCLE": 2,
 	"NUM_IMAGES_PER_LABEL": 10,
+	"PER_TESTSET": 20
+}
+
+========== EXAMPLE 2 ==========
+{
+	"IMAGE_WIDTH": 28,
+	"IMAGE_HEIGHT": 28,
+	"FRAME_WIDTH": 14,
+	"FRAME_HEIGHT": 14,
+	"PIXEL_SHIFTED": 14,
+	"MAX_CYCLE": 50,
+	"NUM_IMAGES_PER_LABEL": 20,
+	"PER_TESTSET": 20
+}
+
+========== EXAMPLE 2 ==========
+
+{
+	"IMAGE_WIDTH": 28,
+	"IMAGE_HEIGHT": 28,
+	"FRAME_WIDTH": 4,
+	"FRAME_HEIGHT": 4,
+	"PIXEL_SHIFTED": 4,
+	"MAX_CYCLE": 200,
+	"NUM_IMAGES_PER_LABEL": 50,
 	"PER_TESTSET": 20
 }

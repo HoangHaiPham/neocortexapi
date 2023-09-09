@@ -58,39 +58,39 @@ namespace Cloud_Experiment
         }
 
         // TODO remove this function because when running on docker, permission denied when trying to download MnistDataset
-        //public async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage)
-        //{
-        //    int numMnistDataset = 0;
-        //    await foreach (BlobItem blobInfo in blobStorageName.GetBlobsAsync())
-        //    {
-        //        BlobClient blobClient = blobStorageName.GetBlobClient(blobInfo.Name);
-        //        numMnistDataset += 1;
+        public async Task GetMnistDatasetFromBlobStorage(BlobContainerClient blobStorageName, string MnistFolderFromBlobStorage)
+        {
+            int numMnistDataset = 0;
+            await foreach (BlobItem blobInfo in blobStorageName.GetBlobsAsync())
+            {
+                BlobClient blobClient = blobStorageName.GetBlobClient(blobInfo.Name);
+                numMnistDataset += 1;
 
-        //        // Download the blob's contents and save it
-        //        if (!File.Exists(blobInfo.Name) && (blobInfo.Name.Contains(MnistFolderFromBlobStorage)))
-        //        {
-        //            Utility.CreateFolderIfNotExist(Path.Combine(blobInfo.Name, @"..\"));
-
-        //            Console.WriteLine($"Download {MnistFolderFromBlobStorage}: " + blobInfo.Name);
-
-        //            await blobClient.DownloadToAsync(blobInfo.Name);
-
-        //            //using (var fileStream = System.IO.File.OpenWrite(blobInfo.Name))
-        //            //{
-        //            //    await blobClient.DownloadToAsync(fileStream);
-        //            //}
-        //        }
-        //        else
-        //        {
-        //            Console.WriteLine($"{blobInfo.Name} already exists!");
-        //        }
-        //    } 
+                // Download the blob's contents and save it
+                if (!File.Exists(blobInfo.Name) && (blobInfo.Name.Contains(MnistFolderFromBlobStorage)))
+                {
+                    Utility.CreateFolderIfNotExist(Path.GetDirectoryName(blobInfo.Name));
                     
-        //    if (numMnistDataset == 0) 
-        //    {
-        //        throw new Exception($"{MnistFolderFromBlobStorage} is NULL. Please upload {MnistFolderFromBlobStorage} to {blobStorageName}");
-        //    }
-        //}
+                    Console.WriteLine($"Download {MnistFolderFromBlobStorage}: " + blobInfo.Name);
+
+                    await blobClient.DownloadToAsync(blobInfo.Name);
+
+                    //using (var fileStream = System.IO.File.OpenWrite(blobInfo.Name))
+                    //{
+                    //    await blobClient.DownloadToAsync(fileStream);
+                    //}
+                }
+                else
+                {
+                    Console.WriteLine($"{blobInfo.Name} already exists!");
+                }
+            }
+
+            if (numMnistDataset == 0)
+            {
+                throw new Exception($"{MnistFolderFromBlobStorage} is NULL. Please upload {MnistFolderFromBlobStorage} to {blobStorageName}");
+            }
+        }
 
         public async Task<CloudTable> CreateTableAsync(string tableName)
         {
