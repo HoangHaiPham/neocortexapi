@@ -416,7 +416,8 @@ namespace Cloud_Experiment
             string prev_image_name = null;
             foreach (var item in testLabel_SDRListIndexes)
             {
-                string key_label = Path.GetFileNameWithoutExtension(item.FramePath).Substring(0, 9);
+                string key_label = Path.GetFileNameWithoutExtension(item.FramePath).Remove(Path.GetFileNameWithoutExtension(item.FramePath).LastIndexOf('_'));
+
                 if (prev_image_name != key_label)
                 {
                     if (prev_image_name != null)
