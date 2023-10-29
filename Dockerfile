@@ -24,9 +24,6 @@ RUN dotnet build "InvariantLearning_Cloud.csproj" -c Release -o /app/build
 FROM build AS publish
 RUN dotnet publish "InvariantLearning_Cloud.csproj" -c Release -o /app/publish
 
-# Copy MnistDataset folder to /app/publish
-#COPY source/InvariantRepresentationLearning/InvariantLearning_Cloud/MnistDataset/ /app/publish/MnistDataset/
-
 FROM base AS final
 # Set current directory to /app
 WORKDIR /app
