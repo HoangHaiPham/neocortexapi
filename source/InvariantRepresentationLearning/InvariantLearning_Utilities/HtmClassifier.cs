@@ -332,15 +332,15 @@ namespace InvariantLearning_Utilities
                 
             }
 
-            foreach (var digit in m_SumSimilarityScoreSamples)
-            {
-                Trace.WriteLine($"Sum similarity of label {digit.Key}: {digit.Value}");
-            }
+            //foreach (var digit in m_SumSimilarityScoreSamples)
+            //{
+            //    Trace.WriteLine($"Sum similarity of label {digit.Key}: {digit.Value}");
+            //}
 
             var sumPredictedLabel = m_SumSimilarityScoreSamples.MaxBy(entry => entry.Value);
 
-            Trace.WriteLine($"Label {testingSamples[0].Object} predicted as (maxSum) {sumPredictedLabel.Key}");
-            Trace.WriteLine("=======================================");
+            //Trace.WriteLine($"Label {testingSamples[0].Object} predicted as (maxSum) {sumPredictedLabel.Key}");
+            //Trace.WriteLine("=======================================");
 
             m_SumSimilarityScoreSamples.Clear();
 

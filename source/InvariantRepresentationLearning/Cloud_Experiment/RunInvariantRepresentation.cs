@@ -505,7 +505,7 @@ namespace Cloud_Experiment
                 Trace.WriteLine($"Actual {p.Key}: Predicted {predictedDigit}");
                 foreach (var w in p.Value)
                 {
-                    Trace.WriteLine($"-- Predicted {w.Key} with {(double)(w.Value) * 100}% similarity score");
+                    Trace.WriteLine($"-- {(double)(w.Value) * 100}% predicted as {w.Key}");
                 }
                 Trace.WriteLine($"============================");
             }
